@@ -21,7 +21,7 @@
 \setlength{\textfloatsep}{8pt plus 2pt minus 2pt}
 \setlength{\floatsep}{6pt plus 2pt minus 2pt}
 \setlength{\intextsep}{6pt plus 2pt minus 2pt}
-\newcommand{\repo}{\url{https://github.com/reman-krishnan/cs6001}}
+\newcommand{\repo}{\url{https://github.com/reman-krishnan/cs6001-project}}
 
 \title{Commit Now, Walk Away Later\\ Designing Forfeits for Delayed Blockchain Transactions\\ \large CS 6001 Course Project Final Report}
 \author{Reman Krishnan (Roll No.\ 26D0365)}
@@ -31,7 +31,21 @@
 \maketitle
 
 \begin{abstract}
-A blockchain is a shared record of signed transactions. Quantum resistant signatures are almost forty times larger than today's, so newer designs keep them off the record and let the user authorize a committed transaction a few blocks later. This delay gives the user a free option, since a trade that turns bad can simply be abandoned. Existing penalties are not sized from this option, and they ignore a producer who holds the full signature and can either publish it or collude with the user. We treat this as a mechanism design problem, choosing a forfeit, its destination and a producer fallback that deter speculation, keep both parties on board, limit collusion and keep collateral low. We solve the resulting extensive form game for subgame perfect equilibria and calibrate it to nine years of ether prices. On its own, a forfeit must be \FstarLow\ to \FstarHigh\ of a trade over \WindowMinutes\ minutes. A credible fallback removes the option, yet collusion pays unless some of the forfeit leaves the user and producer, and burning all of it is cheapest. At 20 minutes, burning \CpHundred\ of the trade keeps their joint gain over the best equilibrium within $0.1$ basis points, but a collateral cap of \KappaAssumed\ allows windows of at most \FrontierMin\ minutes. Burning against collusion has precedents such as Rapidash, so our contribution lies in these limits for a producer holding a usable signature. Within this model, delayed authorization can be made safe, but only with short windows in calm markets.
+A blockchain is a shared record of signed transactions, where the users prove their identity
+on transactions using digital signatures. The proposed and standardized quantum resistant
+signatures are almost 40 times larger than today’s, so newer blockchain designs propose to keep
+them off the record and let the user authorize a committed transaction a few blocks later after
+commiting. This delay gives the user a free option, since a trade that turns bad can simply
+be abandoned by a user. Existing penalties are not sized from this option, and they ignore a
+producer who holds the full signature and can either publish it or collude with the user. We
+treat this as a mechanism design problem, choosing a forfeit, its destination and a producer
+fallback that deter speculation, keep both parties on board, limit collusion and keep collateral
+low. We solve the resulting extensive form game for subgame perfect equilibria and calibrate it
+to nine years of ethereum prices. On its own, a forfeit must be 0.39\% to 0.74\% of a trade over
+20 minutes. A credible fallback removes the option, yet collusion pays unless some of the forfeit
+leaves the user and producer, and burning all of it is cheapest. At 20 minutes, burning 1.35\% of
+the trade keeps their joint gain over the best equilibrium within 0.1 basis points, but a collateral cap of 1\% allows windows of at most 11.8 minutes. Within this model, delayed authorization
+can be made safe, but only with short windows in calm markets.
 \end{abstract}
 
 \section{Introduction}
@@ -84,7 +98,7 @@ Each of these lines of work, however, covers only part of the picture. The secur
 
 This gap matters because the delay itself creates the problem. Suppose a user commits to buy an asset for \$100{,}000 at today's price, for example from a seller whose quoted price stays valid until the window closes, and the price over the next twenty minutes moves with a standard deviation of $0.5\%$. If the price rises, the user authorizes and gains at the seller's expense, and if it falls, the user stays silent and loses nothing. The user therefore holds a \emph{free option}, the right but not the duty to trade at a fixed price after seeing how the price moved. Staying silent caps the loss at zero, as Figure~\ref{fig:overview}(b) shows for an illustrative fee of $0.05\%$, and a forfeit $f$ lowers that floor to $-f$. This option is worth about $0.4\times0.5\%$ of the value, roughly \$200 per commitment, far more than a typical fee.
 
-Two repairs suggest themselves, and each creates a new difficulty. A \emph{forfeit}, a payment charged when a commitment is never authorized, fails if it is too small, and if it is paid to the producer, the producer is tempted to delay an honest user until the window closes so that it can collect the forfeit. A \emph{fallback} lets the producer, which privately receives the user's full signature with the commitment, publish it if the user stays silent, so the large signature reaches the ledger only then. This removes the option, but the user and the producer may then agree in private that the producer stays silent when the price falls and that the two share the gain when it rises. Although the setting comes from blockchains, this is a classical mechanism-design problem: a designer who cannot see types must use payments to deter a profitable deviation, while the agent who enforces the rules has interests of its own and may collude with the user.
+Two mitigation's have been proposed, however each creates a new difficulty. A \emph{forfeit}, a payment charged when a commitment is never authorized, fails if it is too small, and if it is paid to the producer, the producer is tempted to delay an honest user until the window closes so that it can collect the forfeit. A \emph{fallback} lets the producer, which privately receives the user's full signature with the commitment, publish it if the user stays silent, so the large signature reaches the ledger only then. This removes the option, but the user and the producer may then agree in private that the producer stays silent when the price falls and that the two share the gain when it rises. Although the setting comes from blockchains, this is a classical mechanism-design problem: a designer who cannot see types must use payments to deter a profitable deviation, while the agent who enforces the rules has interests of its own and may collude with the user.
 
 The objective of this report is to find forfeit designs that remove the option while staying safe against producers and against collusion. The scope is the incentives around a single commitment, not the bandwidth the design saves. Within this scope it answers four questions, marked in Figure~\ref{fig:overview}(a), the last about the numbered account slot that a commitment occupies, called an \emph{index}.
 \begin{itemize}\setlength{\itemsep}{0pt}
@@ -284,6 +298,13 @@ On chains where recent blocks can be replaced, one account slot (index) can end 
 
 \section{Conclusion and Future Work}\label{sec:disc}
 Delaying authorization hands the user a free option, and the four answers say how to remove it. On its own, a forfeit must be \FstarLow\ to \FstarHigh\ of a 20-minute trade (Q1). With a fallback, it must not stay entirely within the user--producer pair, and burning is cheapest (Q2, Propositions~\ref{prop:imposs} and~\ref{prop:route}). At 20 minutes a burned forfeit of \CpHundred\ keeps collusion within the tolerance, and the required forfeit fits a \KappaAssumed\ collateral limit only for windows up to \FrontierMin\ minutes (Q3). An affordable, answered bond deters disputes that a race cannot (Q4). Future work should add order profits~\cite{daian2020flashboys}, known block schedules, an equilibrium-robust collusion guarantee and a screening menu for private types.
+
+\section*{Declaration of AI Use}
+Three AI models, Claude Opus 5.5, Sonnet 5.5 and ChatGPT 5.6 Luna, were used during this project. They helped organise and manage the GitHub repository, including its folder structure, documentation and reproduction scripts. They also helped me understand the game theory and mechanism design concepts that I needed to implement, and they assisted with the volatility calculations used to calibrate the model. When programming errors came up, I used them to find and fix the causes. Before submission, they carried out a thorough preliminary check of whether the implementation and the report met the requirements of the course project. They also helped me gather and verify relevant literature.
+
+In the later review rounds, the models suggested corrections to the scope of several claims, wording for the abstract and other sections, and the step by step layout of the proofs in the appendix. I checked every suggestion against the model, the code and the cited sources before including it, and I reran the test suite and the full pipeline after each change.
+
+I chose the research questions, the model and the overall direction of the project, and I made the final decision on everything included in this report. I take full responsibility for its content, including any errors that remain.
 
 \begin{thebibliography}{99}
 \interlinepenalty=10000
