@@ -28,8 +28,14 @@ Post-quantum signatures are about forty times larger than today's, so some new b
 
 ## Reproduce
 ```
-pip install -r requirements.txt
-python -m pytest -q          # about 2 minutes
-./run_all.sh                 # regenerates every result and the report from the frozen data, about 25 minutes
+git clone https://github.com/reman-krishnan/cs6001-project.git
+cd cs6001-project
+
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install -r requirements.txt
+
+python3 -m pytest -q
+./run_all.sh
 ```
 Details, the environment and individual steps are in [`docs/REPRODUCING.md`](docs/REPRODUCING.md).
