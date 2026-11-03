@@ -9,6 +9,17 @@ Tested with Python 3.12 (the version used by the GitHub Actions workflow) and th
 ## Individual steps
 All commands run from the repository root.
 ```
+git clone https://github.com/reman-krishnan/cs6001-project.git
+cd cs6001-project
+
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install -r requirements.txt
+
+python3 -m pytest -q
+./run_all.sh
+
+
 pip install -r requirements.txt
 python3 -m pytest -q                                 # the test suite (about 2 min)
 python3 scripts/run_project.py                       # main tables and figures -> results/main (about 2 min)
