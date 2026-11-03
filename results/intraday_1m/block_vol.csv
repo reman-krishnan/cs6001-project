@@ -1,0 +1,2 @@
+step_seconds,n_steps,sigma_step_realized,sigma_step_implied_by_calibration,ratio_realized_to_implied,daily_equivalent_from_steps,daily_from_daily_returns_same_sample,n_daily_returns_same_sample,calibration_daily
+60.0,86399,0.0006817273427872381,0.0012040072385963144,0.5662153190889669,0.025869733757064407,0.030075218184951,60,0.04568886231952973

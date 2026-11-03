@@ -1,0 +1,42 @@
+{
+ "centipede": {
+  "nash": 4,
+  "spne": 1,
+  "payoff": [
+   1.0,
+   0.0
+  ]
+ },
+ "hand_v0": {
+  "solver": 26.333333333333332,
+  "exact": 26.333333333333332
+ },
+ "plain_commit_reveal": {
+  "exploitable": true,
+  "user_gain": 7.7562406446817755,
+  "spec_value": 7.256240645,
+  "violations": 4
+ },
+ "protocol_burn": {
+  "nash": 25,
+  "spne": 4,
+  "noncredible": 21
+ },
+ "protocol_producer": {
+  "nash": 16,
+  "spne": 1
+ },
+ "obs1": {
+  "independent_of_f": true,
+  "value": 5.676671169186402
+ },
+ "obs2": {
+  "all_match": true,
+  "rows": 9,
+  "max_abs_diff": 1.0658141036401503e-13
+ },
+ "obs3": {
+  "all_consistent": true,
+  "rows": 5
+ }
+}

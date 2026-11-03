@@ -1,0 +1,2 @@
+source,daily_vol,ci_low,ci_high,n_returns,data_file
+DATA,0.059494228227985564,0.053845772144740144,0.06621656203609208,2241,SOLUSDT_1d.csv

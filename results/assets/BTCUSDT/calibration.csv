@@ -1,0 +1,2 @@
+source,daily_vol,ci_low,ci_high,n_returns,data_file
+DATA,0.03534838584840881,0.03259524175631938,0.038832708923516035,3331,BTCUSDT_1d.csv

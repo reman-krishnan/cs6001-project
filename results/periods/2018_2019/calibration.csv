@@ -1,0 +1,2 @@
+source,daily_vol,ci_low,ci_high,n_returns,data_file
+DATA,0.05091012258178931,0.04556389802594415,0.05530560979660554,729,historical_prices.csv

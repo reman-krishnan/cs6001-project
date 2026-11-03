@@ -1,0 +1,2 @@
+source,daily_vol,ci_low,ci_high,n_returns,data_file
+DATA,0.04898926145015398,0.04285710034424143,0.05551004938196327,3250,BNBUSDT_1d.csv

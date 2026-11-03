@@ -1,0 +1,13 @@
+{
+ "volatility_source": "DATA",
+ "daily_vol": 0.04568886231952973,
+ "q1_k": 100,
+ "q2_q3_k": 100,
+ "designer_k": 41,
+ "block_seconds": 12,
+ "fee_bp": 5,
+ "publish_cost_bp": 1,
+ "honest_surplus_bp": 10,
+ "slow_skipped": false,
+ "seconds": 127
+}

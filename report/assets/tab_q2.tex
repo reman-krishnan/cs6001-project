@@ -1,0 +1,19 @@
+\begin{tabular}{|l|r|r|c|}
+\hline
+\rowcolor{gray!15}Design & $f/f^*$ & speculator value (bp) & deterred? \\
+\hline
+plain commit-reveal (no forfeit) & 0.0 & 18.9 & No \\
+\hline
+forfeit only, small & 0.3 & 11.1 & No \\
+\hline
+forfeit only, large & 1.5 & $-3.3$ & Yes \\
+\hline
+fallback + burn & 0.3 & $-5.0$ & Yes \\
+\hline
+fallback + producer routing ($f>\mathrm{fee}-c$) & 0.3 & 11.1 & No \\
+\hline
+fallback + burn, signature $\Sigma$ optional & 0.3 & 11.1 & No \\
+\hline
+self routing & 1.5 & 18.9 & No \\
+\hline
+\end{tabular}

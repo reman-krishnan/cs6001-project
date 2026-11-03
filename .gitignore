@@ -1,0 +1,12 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# LaTeX build files
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+data/*_1s.csv
+data/_cache/
