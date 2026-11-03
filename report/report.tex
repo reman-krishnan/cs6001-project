@@ -14,6 +14,7 @@
 \newcolumntype{Y}{>{\raggedright\arraybackslash}X}
 \renewcommand{\arraystretch}{1.12}
 \input{assets/numbers}
+\renewcommand{\VolCI}{4.23\% to 4.98\%}\renewcommand{\FstarCI}{0.49\% to 0.63\%}\renewcommand{\EmpCI}{0.141\% to 0.178\%}\renewcommand{\TwCI}{0.136\% to 0.214\%}
 \newtheorem{proposition}{Proposition}
 \newcommand{\E}{\mathbb{E}}
 \newenvironment{steps}{\begin{list}{}{\setlength{\leftmargin}{3.6em}\setlength{\labelwidth}{3.2em}\setlength{\labelsep}{0.4em}\setlength{\itemsep}{2pt}\setlength{\topsep}{3pt}\setlength{\parsep}{0pt}\renewcommand{\makelabel}[1]{##1\hfil}}}{\end{list}}
@@ -31,30 +32,21 @@
 \maketitle
 
 \begin{abstract}
-A blockchain is a shared record of signed transactions, where digital signatures prove each owner's approval. Standardized quantum resistant
-signatures are almost 40 times larger than today’s, so newer blockchain designs propose to keep
-them off the record and let the user authorize a committed transaction a few blocks after
-committing. This delay gives the user a free option, since a trade that turns bad can simply
-be abandoned. Existing penalties are not sized from this option, and they ignore a
-producer who holds the full signature and can either publish it or collude with the user. We
-treat this as a mechanism design problem, choosing a forfeit, its destination and a producer
-fallback that deter speculation, keep both parties on board, limit collusion and keep collateral
-low. We solve the resulting extensive form game for subgame perfect equilibria and calibrate it
-to nine years of ether prices. On its own, a forfeit must be 0.39\% to 0.74\% of a trade over
-20 minutes. A credible fallback removes the option, yet collusion pays unless some of the forfeit
-leaves the user and producer, and sending all of it outside, for example by burning, is cheapest. At 20 minutes, burning 1.35\% of
-the trade keeps their joint gain over the best equilibrium within 0.1 basis points, but a collateral cap of 1\% allows windows of at most 11.8 minutes. Within this model, delayed authorization
-can be made safe, but the feasible window shrinks quickly as markets become more volatile.
+A blockchain serves as a shared record of signed transactions, where digital signatures verify each owner's approval. Current standardized quantum-resistant signatures are approximately 38 times larger than those used today. As a result, newer blockchain designs propose keeping these signatures off-chain, allowing users to authorize a committed transaction a few blocks later. This delay, however, provides users with a free option that enables them to abandon a bad trade. Existing penalties do not account for this option and overlook a producer who possesses the complete signature and can either publish it or collude with the user. This issue is formulated as a mechanism design problem, determining an appropriate forfeit, its intended recipient, and a producer fallback that discourages speculation, keeps both parties aligned, limits collusion, and minimizes collateral requirements. The resulting extensive-form game is solved for subgame-perfect equilibria and calibrated to nine years of ether price data. On its own, a forfeit needs to be between 0.39\% and 0.74\% of a trade over a span of 20 minutes. A credible fallback eliminates the option, but limiting collusion requires some of the forfeit to leave the user and producer. Sending all of it outside, for example by burning, is cheapest. At 20 minutes, burning 1.35\% of the trade keeps their joint gain over the best equilibrium within 0.1 basis points. However, a collateral cap of 1\% restricts the time window to a maximum of 11.8 minutes. Within this model, delayed authorization can achieve the stated incentive constraints, although the feasible window decreases as market volatility increases.
 \end{abstract}
 
 \section{Introduction}
-A blockchain is a shared ledger, a list of transactions of which many independent computers, called nodes, keep identical copies. The ledger grows in batches called blocks, about one every twelve seconds on Ethereum. For each block one participant, the \emph{block producer} (also called a validator or sequencer), chooses which waiting transactions to include and earns a fee for each. Every transaction carries a digital signature, a piece of data that only the account owner can produce and that proves the owner approved the transaction. These signatures are about to grow much larger. A sufficiently large quantum computer would break the signature schemes in use today, and the ML-DSA-44 scheme that NIST standardized as a replacement produces signatures of 2,420 bytes, against 64 bytes for a raw P-256 ECDSA signature~\cite{fips204,fips186}. Since every node must receive, check and store every signature, this growth raises the cost of running a ledger for everyone.
+A blockchain is a shared ledger, a list of transactions of which many independent computers, called nodes, keep identical copies. The ledger grows in batches called blocks, about one every twelve seconds on Ethereum. For each block one participant, the \emph{block producer}, chooses which waiting transactions to include and earns a fee for each. Every transaction carries a digital signature, a piece of data that only the account owner can produce and that proves the owner approved the transaction. These signatures are about to grow much larger. A sufficiently large quantum computer would break the signature schemes in use today, and the ML-DSA-44 scheme that NIST standardized as a replacement produces signatures of 2,420 bytes, against 64 bytes for a raw P-256 ECDSA signature~\cite{fips204,fips186}. Since every node must receive, check and store every signature, this growth raises the cost of running a ledger for everyone.
 
-One recent proposal avoids this cost by keeping the full signature off the ledger~\cite{finlowbates2026}. The user first posts a \emph{commitment}, a short fingerprint (a hash) of the transaction that fixes its contents without revealing them, and a few blocks later posts a short secret value that authorizes it. We call such designs \emph{deferred-authorization protocols}. Their resistance to forgery has been analysed~\cite{lie2026finality}, similar delays create free options in atomic swaps, which exchange coins across two blockchains~\cite{han2019optionality}, and in Ethereum's planned proposer-builder separation (ePBS), where a separate builder assembles each block~\cite{mazorra2025epbs}, and a separate literature studies how producers and users behave when they can make private agreements~\cite{roughgarden2021tfm,chungshi2023}.
+One recent proposal avoids this cost by keeping the full signature off the ledger~\cite{finlowbates2026}. The user first posts a \emph{commitment}, a short fingerprint (a hash) of the transaction that fixes its contents without revealing them, and a few blocks later posts a short secret value that authorizes it. We call such designs \emph{deferred-authorization protocols}. Their resistance to forgery has been analysed~\cite{lie2026finality}. Similar delays create options to abandon an unfavourable trade in atomic swaps, which exchange coins across two blockchains~\cite{han2019optionality}, and in Ethereum's planned proposer-builder separation (ePBS), where a separate builder assembles each block~\cite{mazorra2025epbs}. A separate literature studies collusion, in which users and producers coordinate as a coalition through private agreements~\cite{roughgarden2021tfm,chungshi2023}.
 
-Each of these lines of work, however, covers only part of the picture. The security analysis treats producers as adversaries without asking what payments would make them behave well. The swap-pricing literature has no producer who could cancel the option, work on hashed time-lock contracts (HTLCs)~\cite{tsabary2021mad,wadhwa2023hehtlc,chung2025rapidash} protects a two-party exchange rather than one user's delayed authorization, and the ePBS study penalizes the builder, who holds the option itself. The draft EIP-8209 burns, that is destroys, a prepaid fee when a commitment is not revealed~\cite{eip8209}, and defences against front-running, where others jump ahead of a pending transaction, penalize non-reveal or allow it~\cite{canidio2023commitment}, but neither derives the penalty from the value of the option. Among the works studied, none sizes such a penalty from the option's value and decides where its money should go when the producer can publish the signature and collude with the user.
+The draft Ethereum Improvement Proposal EIP-8209 burns, that is destroys, a prepaid fee when a commitment is not revealed~\cite{eip8209}, and defences against front-running, where others jump ahead of a pending transaction, penalize non-reveal or allow it~\cite{canidio2023commitment}. Among the works studied, none sizes such a penalty from the option's value and decides where its money should go when the producer can publish the signature and collude with the user. Section~\ref{sec:related} compares these lines of work.
 
-\begin{figure}[t]\centering
+This gap matters because the delay itself creates the problem. Suppose a user commits to buy an asset for \$100{,}000 at today's price, for example from a seller whose quoted price stays valid until the window closes, and the price over the next twenty minutes moves with a standard deviation of $0.5\%$. If the price rises, the user authorizes and gains at the seller's expense, and if it falls, the user stays silent and loses nothing. The user therefore holds a \emph{free option}, the right but not the duty to trade at a fixed price after seeing how the price moved. Staying silent caps the loss at zero, as Figure~\ref{fig:overview}(b) shows for an illustrative fee of $0.05\%$, and a forfeit $f$, a penalty charged when the user walks away, lowers that floor to $-f$. This option is worth roughly \$200 per commitment before fees under a normal approximation, far more than a typical fee.
+
+Two mitigations have been proposed, but each creates a new difficulty. A forfeit fails if it is too small, and if it is paid to the producer, the producer is tempted to delay an honest user until the window closes so that it can collect the forfeit. A \emph{fallback} lets the producer, which privately receives the user's full signature with the commitment, publish it if the user stays silent, so the large signature reaches the ledger only then. This removes the option, but the user and the producer may then agree in private that the producer stays silent when the price falls and that the two share the gain when it rises. Although the setting comes from blockchains, this is a classical mechanism-design problem, in which a designer who cannot observe the user's motive must use payments to deter a profitable deviation, while the agent who enforces the rules has interests of its own and may collude with the user.
+
+\begin{figure}[htbp]\centering
 \begin{minipage}[b]{0.6\textwidth}\centering
 \begin{tikzpicture}[font=\scriptsize,>=stealth,
   box/.style={draw,rounded corners=2pt,align=center,inner sep=2pt,fill=gray!8},
@@ -92,14 +84,10 @@ Each of these lines of work, however, covers only part of the picture. The secur
 \end{tikzpicture}\\[-1pt]
 {\footnotesize (b) Payoff of walking away}
 \end{minipage}
-\caption{The problem at a glance. Here $\Sigma$ is the user's full signature, $S_t$ the price at block $t$, $k$ the deadline block, $q$ the chance that an authorization attempt is left out of a block, $f$ the forfeit charged when the user walks away and $\rho$ the rule that splits it. Red labels mark where each question arises.}\label{fig:overview}
+\caption{The problem at a glance.}\label{fig:overview}
 \end{figure}
 
-This gap matters because the delay itself creates the problem. Suppose a user commits to buy an asset for \$100{,}000 at today's price, for example from a seller whose quoted price stays valid until the window closes, and the price over the next twenty minutes moves with a standard deviation of $0.5\%$. If the price rises, the user authorizes and gains at the seller's expense, and if it falls, the user stays silent and loses nothing. The user therefore holds a \emph{free option}, the right but not the duty to trade at a fixed price after seeing how the price moved. Staying silent caps the loss at zero, as Figure~\ref{fig:overview}(b) shows for an illustrative fee of $0.05\%$, and a forfeit $f$, a penalty charged when the user walks away, lowers that floor to $-f$. This option is worth about $0.4\times0.5\%$ of the value, roughly \$200 per commitment, far more than a typical fee.
-
-Two mitigations have been proposed, but each creates a new difficulty. A \emph{forfeit}, a payment charged when a commitment is never authorized, fails if it is too small, and if it is paid to the producer, the producer is tempted to delay an honest user until the window closes so that it can collect the forfeit. A \emph{fallback} lets the producer, which privately receives the user's full signature with the commitment, publish it if the user stays silent, so the large signature reaches the ledger only then. This removes the option, but the user and the producer may then agree in private that the producer stays silent when the price falls and that the two share the gain when it rises. Although the setting comes from blockchains, this is a classical mechanism-design problem: a designer who cannot see types must use payments to deter a profitable deviation, while the agent who enforces the rules has interests of its own and may collude with the user.
-
-The objective of this report is to find forfeit designs that remove the option while staying safe against producers and against collusion. The scope is the incentives around a single commitment, not the bandwidth the design saves. Within this scope it answers four questions, marked in Figure~\ref{fig:overview}(a), the last about the numbered account slot that a commitment occupies, called an \emph{index}.
+The objective of this report is to find forfeit designs that remove the option while staying safe against producers and against collusion. The scope is the incentives around a single commitment, not the bandwidth the design saves. Within this scope it answers four questions, each marked in red where it arises on the timeline of Figure~\ref{fig:overview}(a). There $\Sigma$ is the user's full signature, $S_t$ the price at block $t$, $k$ the deadline block, $q$ the chance that an attempt is left out of a block, and $\rho$ the rule that splits $f$ among the user, the producer and burning. The last question concerns a reorganization, in which recent blocks are replaced and two commitments can end up on one \emph{index}, the numbered account slot that a commitment occupies.
 \begin{itemize}\setlength{\itemsep}{0pt}
 \item \textbf{Q1.} How small can a forfeit be and still remove the option, given the window, volatility and size?
 \item \textbf{Q2.} Where should the forfeit go so that the producer still publishes and honest users are unharmed?
@@ -107,12 +95,12 @@ The objective of this report is to find forfeit designs that remove the option w
 \item \textbf{Q4.} Should a dispute over an index be settled by a bonded contest or by a race?
 \end{itemize}
 
-To answer these questions, the protocol is modelled as a game in which the user and the producer move in turn and a chance player, nature, draws the price at each block. The designer's choice is then written as an optimization over mechanisms with deterrence, individual-rationality, credibility, collusion-proofness and collateral constraints. The game is solved by backward induction, that is, by working out each player's best move from the last block back to the first, with proofs wherever a closed form exists and numerical solutions elsewhere. The report contributes a game model with an independently checked solver, one main analytic result (an impossibility result for forfeits that stay with the user or producer), six shorter propositions, among them the optimality of burning, and calibrated answers to all four questions. Sections~\ref{sec:related} to~\ref{sec:disc} cover related work, the model, the analytic results, the solver and calibration, the answers, a discussion of scope and the conclusion.
+To answer these questions, the protocol is modelled as a game in which the user and the producer move in turn and a chance player, nature, draws the price at each block. The designer's choice is then written as an optimization over mechanisms with deterrence, individual-rationality, credibility, collusion-proofness and collateral constraints. The game is solved by backward induction, finding each player's best action from the last block back to the first, with proofs where closed forms exist and numerical solutions elsewhere. The report contributes a game model with an independently checked solver, one main analytic result (an impossibility result for forfeits that stay with the user or producer), six shorter propositions, among them the optimality of burning, and calibrated answers to all four questions.
 
 \section{Related Work}\label{sec:related}
 Table~\ref{tab:related} lists the closest lines of work, what each establishes and what this report adds.
 
-\begin{table}[h]\centering\footnotesize
+\begin{table}[htbp]\centering\scriptsize
 \renewcommand{\arraystretch}{1.15}
 \begin{tabularx}{\textwidth}{|>{\raggedright\arraybackslash}p{3.3cm}|Y|Y|}
 \hline
@@ -128,24 +116,26 @@ Deferred authorization~\cite{finlowbates2026,lie2026finality} & Commit first, au
 \hline
 Option value of delay~\cite{han2019optionality,crr1979,xu2021htlc,xue2021hedging,mazumdar2022quick,dubovitskaya2021packetized,mazorra2025epbs} & Atomic swaps and ePBS create free options, priced with the binomial lattice, and penalize the party that holds the option & Here a third party, the producer, can switch the option off or keep it alive by colluding \\
 \hline
-HTLC incentives and Rapidash~\cite{tsabary2021mad,wadhwa2023hehtlc,chung2025rapidash} & Miners enforce penalties or are bribed. Rapidash burns most funds, pays a small reward, and sets a $T$-block timeout so that a coalition with mining share $\gamma$ holds every block only with probability $\gamma^T$ & Pool routing and Proposition~\ref{prop:rot} rest on these ideas, applied to a producer that holds a usable signature under a collateral limit \\
+Hashed time-lock contract (HTLC) incentives and Rapidash~\cite{tsabary2021mad,wadhwa2023hehtlc,chung2025rapidash} & Miners enforce penalties or are bribed. Rapidash burns most funds, pays a small reward, and sets a $T$-block timeout so that a coalition with mining share $\gamma$ holds every block only with probability $\gamma^T$ & Pool routing and Proposition~\ref{prop:rot} rest on these ideas, applied to a producer that holds a usable signature under a collateral limit \\
 \hline
 Commit-reveal penalties in practice~\cite{eip8209,canidio2023commitment,lee2025commitreveal,sip80,eip8184} & Fees for not revealing are burned, pooled or slashed, at amounts fixed by rule & The penalty is sized from the value of the option \\
 \hline
-Payments and budget balance in mechanism design~\cite{vickrey1961,clarke1971,groves1973,greenlaffont1977,cavallo2006,guoconitzer2009,myerson1981} & Where collected money goes, and its tension with budget balance & The routing question: money must leave the user--producer pair \\
+Payments and budget balance in mechanism design~\cite{vickrey1961,clarke1971,groves1973,greenlaffont1977,cavallo2006,guoconitzer2009,myerson1981} & Where collected money goes, and its tension with budget balance & The routing question, since money must leave the pair of user and producer \\
 \hline
-Producer extraction and disputes~\cite{daian2020flashboys,luu2015demystifying,kalodner2018arbitrum,mccorry2019pisa,baye1996allpay} & Producers profit from ordering; disputes are settled by bonds or all-pay races & Bond and race compared for disputed indices (Q4); ordering profits left for future work \\
+Producer extraction and disputes~\cite{daian2020flashboys,luu2015demystifying,kalodner2018arbitrum,mccorry2019pisa,baye1996allpay} & Producers profit from ordering, and disputes are settled by bonds or all-pay races & Bond and race compared for disputed indices (Q4), with ordering profits left for future work \\
 \hline
 \end{tabularx}
 \caption{Related work and what this report adds.}\label{tab:related}
 \end{table}
 
-Burning against collusion, collateral for credible revelation and the window argument are therefore known. The contribution of this report is narrower: it combines them for a producer that holds a usable signature, proves that a forfeit kept within the pair cannot stop collusion (Proposition~\ref{prop:imposs}), identifies the cheapest routing (Proposition~\ref{prop:route}), and computes the windows that a collateral limit allows.
+Burning against collusion, collateral for credible revelation and the window argument are therefore known, and what is new here is their combination for a producer that holds a usable signature.
 
 \section{Model}\label{sec:model}
-\textbf{Players, timeline and information.} The model follows one commitment, as in Figure~\ref{fig:overview}(a). The players are a user $U$, a block producer $P$ and nature, which is not strategic and stands for the randomness of the price. A block lasts twelve seconds, and the window $k$ is the number of blocks between the commitment and the deadline. At block $0$ the user commits and, when the protocol requires it, hands the full signature $\Sigma$ to the producer. The price $S_t$ at block $t$ follows a recombining binomial lattice, a tree in which the price moves up by the factor $u=e^{\sigma}$ or down by $d=1/u$ at each block, where $\sigma$ is the per-block volatility. After $j$ up-moves in $t$ blocks the price is $S_t=S_0e^{\sigma(2j-t)}$, and an up-move has probability $p=(1-d)/(u-d)$. This makes $S_t$ a martingale, meaning that the expected future price equals the current price. At blocks $1,\dots,k-1$ the user may attempt to authorize, and each attempt is included with probability $1-q$. If the user has not authorized by block $k$, a producer holding $\Sigma$ chooses whether to publish it. If the producer withholds it, or never received it, the commitment is dropped and the user is charged the forfeit $f$. Every player sees all earlier moves before it acts, so this is an extensive-form game with perfect information and chance moves (Figure~\ref{fig:tree}, whose payoffs are defined in the next paragraph).
+\textbf{Players, timeline and information.} The model follows one commitment, as in Figure~\ref{fig:overview}(a). The players are a user $U$, a block producer $P$ and nature, which is not strategic and stands for the randomness of the price. A block lasts twelve seconds, and the window $k$ is the number of blocks between the commitment and the deadline. At block $0$ the user commits and, when the protocol requires it, hands the full signature $\Sigma$ to the producer. The price $S_t$ at block $t$, with $S_0$ denoting the commitment-time price, follows a recombining binomial lattice, a tree in which an up-move followed by a down-move reaches the same price as the reverse, and in which the price moves up by the factor $u=e^{\sigma}$ or down by $d=1/u$ at each block, where $\sigma$ is the per-block volatility parameter controlling the size of price changes. After $j$ up-moves in $t$ blocks the price is $S_t=S_0e^{\sigma(2j-t)}$, and an up-move has probability $p=(1-d)/(u-d)$. This makes $S_t$ a martingale, meaning that the expected future price equals the current price. At blocks $1,\dots,k-1$ the user may attempt to authorize, and each attempt is included with probability $1-q$. Inclusion failures are independent of prices, and Q3 studies deliberate censorship separately. If the user has not authorized by block $k$, a producer holding $\Sigma$ chooses whether to publish it. If the producer withholds it, or never received it, the commitment is dropped and the user is charged the forfeit $f$. Every player sees all earlier moves before it acts, so this is an extensive-form game with perfect information and chance moves. Figure~\ref{fig:tree} draws it for $q=0$, when every authorization is included, with circles marked N for nature's price moves and payoffs written as (user, producer).
 
-\begin{figure}[t]\centering
+\textbf{Payoffs.} Outcomes are measured in money, and players are risk neutral with quasi-linear utilities, so they maximize expected money and a coalition can share its gain through transfers. The transaction has value $N$ and is priced at the commitment-time price $S_0$, so executing it at block $t$ is worth $g_t=N(S_t/S_0-1)$ to the user. On execution the user pays the producer a flat fee $\phi$, and publishing the signature costs the producer $c$. This payoff fits a fixed-price purchase from a seller who must honour the quote until the deadline, and other transaction types need their own payoff model. A speculator commits only for the option, while an honest user values execution at a constant $v$ with $v>\phi$, so its surplus from executing is $v-\phi$. Figure~\ref{fig:tree} gives the payoff of each outcome, and Table~\ref{tab:notation} lists the notation and the baseline values. Money is quoted as a fraction of $N$, and one basis point (bp) is $10^{-4}$ of $N$, or $0.01\%$. A routing rule $\rho=(\rho_U,\rho_P,\rho_O)$ splits a dropped forfeit into the shares returned to the user, paid to the producer and sent outside the pair, with $\rho_U+\rho_P+\rho_O=1$. Self is $(1,0,0)$, burn is $(0,0,1)$ and destroys the money, producer is $(0,1,0)$, and pool$(n)$ gives the producer $1/n$ and sends the rest outside the pair. The user locks $f$ as collateral until settlement. Execution returns this deposit, and a drop distributes it according to $\rho$. The collateral limit $\kappa_c$ caps the deposit at $\kappa_c N$.
+
+\begin{figure}[htbp]\centering
 \begin{tikzpicture}[scale=0.75, transform shape, >=stealth, font=\small, dec/.style={circle,draw,minimum size=6.5mm,inner sep=0pt}, chance/.style={circle,draw,fill=gray!25,minimum size=6.5mm,inner sep=0pt}]
 \node[chance] (n1) at (0,0) {N};
 \node[dec] (u1) at (2.2,0) {U};
@@ -158,15 +148,13 @@ Burning against collusion, collateral for credible revelation and the window arg
 \draw[->] (n2) -- node[above]{$S_2$} (u2);
 \draw[->] (u2) -- node[below]{wait} (dots);
 \draw[->] (dots) -- node[above]{$S_k$} (p);
-\draw[->] (u1) -- node[right]{reveal} ++(0,0.9) node[above]{$(g_1-\phi,\ \phi)$};
-\draw[->] (u2) -- node[right]{reveal} ++(0,0.9) node[above]{$(g_2-\phi,\ \phi)$};
+\draw[->] (u1) -- node[right]{authorize} ++(0,0.9) node[above]{$(g_1-\phi,\ \phi)$};
+\draw[->] (u2) -- node[right]{authorize} ++(0,0.9) node[above]{$(g_2-\phi,\ \phi)$};
 \draw[->] (p) -- node[left]{publish} ++(0,0.9) node[above]{$(g_k-\phi,\ \phi-c)$};
 \draw[->] (p) -- node[left]{withhold} ++(0,-0.9) node[below]{$(-(1-\rho_U)f,\ \rho_P f)$};
 \end{tikzpicture}
-\caption{The base game, drawn for $q=0$ so that every authorization is included, with payoffs (user, producer). Circles marked N are nature's price moves, $g_t$ is the value of executing at block $t$, $\phi$ the fee, $c$ the producer's publishing cost, and $\rho_U$ and $\rho_P$ the shares of the forfeit $f$ returned to the user and paid to the producer.}\label{fig:tree}
+\caption{The base game for $q=0$.}\label{fig:tree}
 \end{figure}
-
-\textbf{Payoffs.} Outcomes are measured in money, and players are risk neutral with quasi-linear utilities, so money can be passed between players one for one. The transaction has value $N$ and is priced at the commitment-time price $S_0$, so executing it at block $t$ is worth $g_t=N(S_t/S_0-1)$ to the user. On execution the user pays the producer a flat fee $\phi$, and publishing the signature costs the producer $c$. Any transaction whose terms are fixed at commitment has this form, such as a purchase at a price that a seller has quoted and must honour until the deadline. An ordinary limit order does not, since it executes at the market price whenever that is better, and a plain transfer creates no option. A speculator commits only for the option, while an honest user values execution at a constant $v$ with $v>\phi$, so its surplus from executing is $v-\phi$. Figure~\ref{fig:tree} gives the payoff of each outcome, and Table~\ref{tab:notation} lists the notation and the baseline values. Money is quoted as a fraction of $N$, and one basis point (bp) is $10^{-4}$. A routing rule $\rho=(\rho_U,\rho_P,\rho_O)$ splits a dropped forfeit into the shares returned to the user, paid to the producer and sent outside the pair, with $\rho_U+\rho_P+\rho_O=1$. Self is $(1,0,0)$, burn is $(0,0,1)$ and destroys the money, producer is $(0,1,0)$, and pool$(n)$ gives the producer $1/n$ and sends the rest outside the pair. The collateral limit $\kappa_c$ caps the forfeit at $\kappa_c N$.
 
 \begin{table}[t]\centering\footnotesize
 \begin{tabularx}{\textwidth}{|l|Y|l|}
@@ -191,11 +179,11 @@ $f$, $\kappa_c$ & forfeit for an unauthorized commitment, and collateral limit a
 \caption{Notation and baseline values.}\label{tab:notation}
 \end{table}
 
-\textbf{Threat model.} The threats are economic, not cryptographic. Every party acts in its own interest, and the signature and hash commitment are assumed secure~\cite{lie2026finality}. The producer earns only fees and its share of forfeits, and may censor attempts, withhold the signature, or agree with the user on an enforceable side payment. The committed transaction stays valid and executable throughout the window: the user cannot invalidate the fallback by moving funds, changing its transaction counter (nonce) or permissions, or cancelling, and the seller's quote or reserved assets keep the terms enforceable, without which Proposition~\ref{prop:cred} would fail. Order profits, network attacks and larger coalitions are not modelled.
+\textbf{Threat model.} The threats are economic, not cryptographic. Every party acts in its own interest, and the signature and hash commitment are assumed secure~\cite{lie2026finality}. The producer earns only fees and its share of forfeits, and may censor attempts, withhold the signature, or agree with the user on an enforceable side payment. The committed transaction stays valid and executable throughout the window. The user cannot invalidate the fallback by moving funds, changing its transaction counter (nonce) or permissions, or cancelling, and the seller's quote or reserved assets keep the terms enforceable. Without these assumptions Proposition~\ref{prop:cred} would fail. Order profits, network attacks and larger coalitions are not modelled.
 
-\textbf{Solution concept.} The game is solved for its subgame-perfect Nash equilibria (SPE) by backward induction. Subgame perfection requires every plan to be a best response at every point of the game, not only on the path played, so it rules out equilibria that rest on threats a player would not carry out. Write $V_0$ for a user's expected payoff from committing, its value at block $0$. A design \emph{deters} speculation if the speculator's $V_0$ is at most $0$ in every pure SPE, where an indifferent producer may break its tie differently at each state. For a strategy profile $s$, let $J(s)$ be the expected joint payoff of the user and producer, and let $J^*$ be the largest joint payoff they can reach over all joint strategies with side payments. A coalition's \emph{gain} is $\Delta=J^*-\max_s J(s)$, where the maximum runs over SPE with uniform tie-breaking. Under a strictly credible fallback this best equilibrium is the \emph{honest} one, in which the user tries to authorize at every block, but the user is indifferent among authorization times, and in the SPE where it waits for the fallback the joint payoff is lower by $c(1-q^{k-1})$. When the producer prefers to withhold, the best equilibrium already involves strategic timing. Collusion guarantees are thus relative to the best equilibrium, not to every one.
+\textbf{Solution concept.} A strategy says what a player does at every decision point, even one never reached, and a pure strategy never randomizes. In a subgame-perfect Nash equilibrium (SPE), found by backward induction, no player gains by changing its own strategy after any history, which rules out threats a player would not carry out. Write $V_0$ for a user's expected payoff from committing, against zero for staying out. A design \emph{deters} speculation if the speculator's $V_0$ is at most $0$ in every pure SPE, where an indifferent speculator stays out and an indifferent producer may break its tie differently at each state. A coalition is the user and producer coordinating their actions and sharing the gain through private side payments. For a strategy profile $s$, the collection of all players' strategies, let $J(s)$ be the expected joint payoff of the user and producer, and let $J^*$ be the largest joint payoff they can reach over all joint strategies with side payments. A coalition's \emph{gain} is $\Delta=J^*-\max_s J(s)$, where the maximum runs over SPE with uniform tie-breaking, meaning that each kind of indifference is resolved by the same action at every node. With a strictly credible fallback, meaning that the producer earns strictly more by publishing than withholding, the equilibrium attaining this maximum is the \emph{honest} one, in which the user tries to authorize at every block, but the user is indifferent among authorization times. If it waits for the fallback, the producer always pays $c$ to publish rather than only when all $k-1$ attempts fail, so this waiting equilibrium has a joint payoff lower by $c(1-q^{k-1})$. When the producer prefers to withhold, the best equilibrium already involves strategic timing. Collusion guarantees are thus relative to the best equilibrium, not to every one.
 
-\textbf{The designer's problem.} The question is one of mechanism design with transfers. A designer, whoever writes the protocol rules, fixes a mechanism $M=(k,f,\rho,\mathcal A)$ before play, where $\mathcal A$ states whether the producer may publish the signature and whether the user must hand it over. The designer cannot see who is a speculator and cannot dictate actions, so, as with the payment rule of a classical mechanism, it acts only through the forfeit and where its money goes. $M$ induces the extensive-form game above, an indirect and dynamic mechanism, and the aim is to implement in SPE an outcome in which speculators gain nothing by entering and honest users still want to participate~\cite{moore1988spi}. Write $V_0^{\mathrm{spec}}$ and $V_0^{\mathrm{hon}}$ for the values of committing to a speculator and to an honest user. With a collusion tolerance $\varepsilon\ge0$ and the collateral limit $\kappa_c$, the designer's program is
+\textbf{The designer's problem.} The question is one of mechanism design with transfers. A designer, whoever writes the protocol rules, fixes a mechanism $M=(k,f,\rho,\mathcal A)$ before play, where $\mathcal A$ states whether the producer may publish the signature and whether the user must hand it over. $M$ induces the extensive-form game above, an indirect and dynamic mechanism, and the aim is to implement in SPE an outcome in which speculators gain nothing by entering and honest users still want to participate~\cite{moore1988spi}. Write $V_0^{\mathrm{spec}}$ and $V_0^{\mathrm{hon}}$ for the values of committing to a speculator and to an honest user. With a collusion tolerance $\varepsilon\ge0$ and the collateral limit $\kappa_c$, the designer's program is
 \begin{align*}
 \min_{M}\ f\quad\text{subject to}\quad
 &\text{(D)}\ \ V_0^{\mathrm{spec}}(M)\le 0\ \text{in every pure SPE} &&\text{deterrence}\\
@@ -204,16 +192,16 @@ $f$, $\kappa_c$ & forfeit for an unauthorized commitment, and collateral limit a
 &\text{(CP}_\varepsilon\text{)}\ \ \Delta(M)\le\varepsilon &&\text{collusion-proofness}\\
 &\text{(K)}\ \ f\le\kappa_c N &&\text{collateral.}
 \end{align*}
-The objective is the collateral an honest user must lock. (D) is weak deterrence, a speculator indifferent at zero being assumed to abstain. (IR) guarantees participation, not the full surplus $v-\phi$ (about $0.18$ bp short at $k=10$ and $q=0.6$ without a fallback). (CR) is the incentive constraint of the producer, the agent that enforces the rules, much as a credible auction needs an auctioneer who prefers to follow them~\cite{akbarpour2020credible}. (CP$_0$), the case $\varepsilon=0$, is OCA-proofness for one pair~\cite{roughgarden2021tfm} and plays the role of the coalition incentive constraint of collusion-proof mechanism design~\cite{laffont1997collusion}. The routing $\rho$ decides budget balance. A forfeit kept inside the pair ($\rho_O=0$) balances the pair's budget, while burning destroys money, as in money-burning mechanisms~\cite{hartline2008burning}. The questions solve restricted versions of this program: collateral is minimized with the window fixed, the largest feasible window is then searched for separately, and a credible fallback already meets (D) at $f=0$. Q1 fixes the window, rules out a fallback and finds the smallest burned forfeit meeting (D). Q2 asks which routings meet (CR) and (CP) together. Q3 fixes the window, requires a credible fallback, finds the cheapest routing and forfeit meeting (CP$_\varepsilon$), and then finds the largest window for which that forfeit meets (K). Q4 compares two rules for a related dispute. Appendix~\ref{app:choices} gives each modelling choice its reason, the alternative not taken and what could come next.
+The objective is the collateral an honest user must lock, and Table~\ref{tab:guarantees} in Appendix~\ref{app:choices} states exactly what (D) and (IR) promise. (CR) is the incentive constraint of the producer, the agent that enforces the rules, much as a credible auction needs an auctioneer who prefers to follow them~\cite{akbarpour2020credible}. (CP$_0$), the case $\varepsilon=0$, is OCA-proofness for one pair~\cite{roughgarden2021tfm} and plays the role of the coalition incentive constraint of collusion-proof mechanism design~\cite{laffont1997collusion}. The routing $\rho$ decides budget balance. A forfeit kept inside the pair ($\rho_O=0$) balances the pair's budget, while burning destroys money, as in money-burning mechanisms~\cite{hartline2008burning}. The questions solve restricted versions of this program. In each, collateral is minimized with the window fixed, and the largest feasible window is searched for separately. A credible fallback already meets (D) at $f=0$, so with a fallback the binding constraints are (CR), (CP$_\varepsilon$) and (K). Q1 fixes the window, rules out a fallback and finds the smallest burned forfeit meeting (D). Q2 asks which routings meet (CR) and (CP) together. Q3 fixes the window, requires a credible fallback, finds the cheapest routing and forfeit meeting (CP$_\varepsilon$), and then finds the largest window for which that forfeit meets (K). Q4 compares two rules for a related dispute. Appendix~\ref{app:choices} explains each modelling choice.
 
-\textbf{Extensions.} Three extensions relax the base game. In the \emph{rotating-producer} model each block is produced, independently, by a strategic entity with probability $\alpha$ (its share of the blocks) and otherwise by an honest producer, so $\alpha=1$ is a single sequencer, the sole producer of a rollup.
+\textbf{Extensions.} Three extensions relax the base game. In the \emph{rotating-producer} model each block is produced, independently, by a strategic entity with probability $\alpha$ (its share of the blocks) and otherwise by an honest producer, so $\alpha=1$ is a single sequencer, the one operator that orders every block of a rollup, a chain that runs on top of Ethereum.
 
-In the \emph{contest} model, a reorganization, in which the latest blocks are replaced, leaves two valid commitments at one index. An attacker with value $V_a$ and cost $\kappa$ rebinds the index, and the owner, who would lose $V_o$, is present with probability $a$. Under a \emph{bond} the attacker posts $b$, and a present owner with capital $K\ge b$ answers at cost $c_r$ and wins it. Under a \emph{race} both sides pay for priority, an all-pay contest~\cite{baye1996allpay}.
+In the \emph{contest} model, a reorganization leaves two valid commitments at one index. An attacker with value $V_a$ and cost $\kappa$ rebinds the index, and the owner, who would lose $V_o$, is present with probability $a$. Under a \emph{bond} the attacker posts $b$. A present owner answers by posting a matching bond, which needs capital $K\ge b$, and showing the valid signature at a response cost $c_r$, which settles the claim in its favour, so it recovers its own bond and wins the attacker's. Under a \emph{race} both sides pay for priority even if they lose, an all-pay contest~\cite{baye1996allpay}.
 
-In the \emph{private-type} model, each user has a hidden exposure $\theta$ that makes execution worth $\theta N$ more, and the designer picks the forfeit that best balances the gain exposed users make by timing their authorization, a chosen proxy for value taken from counterparties, against surplus lost by deterred users (Appendix~\ref{app:extra}). A menu of (window, forfeit) pairs, in the spirit of the revelation principle~\cite{myerson1979incentive}, is an open extension.
+In the \emph{private-type} model, each user has a hidden exposure $\theta$, an additional personal benefit of $\theta N$ from execution, and the designer balances the gain exposed users make by timing their authorization against the surplus of deterred users (Appendix~\ref{app:extra}). Offering users a menu of (window, forfeit) pairs to choose from, in the spirit of the revelation principle~\cite{myerson1979incentive}, is an open extension.
 
 \section{Analytic Results}\label{sec:theory}
-Seven results explain most of the numbers. Proposition~\ref{prop:imposs} is the main new result, Propositions~\ref{prop:self} to~\ref{prop:cred} are short lemmas, Propositions~\ref{prop:rot} and~\ref{prop:contest} adapt known arguments, and Proposition~\ref{prop:route} identifies the cheapest routing. The last three are stated in Appendix~\ref{app:proofs}, where all proofs are written step by step. Propositions~\ref{prop:value} to~\ref{prop:imposs} rest on the martingale property $\E[g_{t+1}\mid S_t]=g_t$, where $\E$ denotes expectation, that is, the trade's expected value one block later equals its value now. We write $x^+=\max(x,0)$. The first result disposes of the simplest routing.
+This section states Propositions~\ref{prop:self} to~\ref{prop:imposs}, of which Proposition~\ref{prop:imposs} is the main new result. The remaining three results and the full proofs of Propositions~\ref{prop:value} to~\ref{prop:route} appear in Appendix~\ref{app:proofs}. Propositions~\ref{prop:value} to~\ref{prop:imposs} use the martingale property $\E[g_{t+1}\mid S_t]=g_t$, where $\E$ denotes expectation and the vertical bar means conditioning on the current price. We write $x^+=\max(x,0)$.
 
 \begin{proposition}[Self-routing is inert]\label{prop:self}
 If the forfeit returns to the user, no payoff depends on $f$.
@@ -227,29 +215,24 @@ Without a fallback, with $k\ge2$ and $q=0$, let the user lose $f$ when the commi
 \[V_0(f)=\E[\max(g_{k-1}-\phi,-f)]=-f+\E\big[(g_{k-1}-(\phi-f))^+\big]=\E\big[((\phi-f)-g_{k-1})^+\big]-\phi .\]
 Speculation is deterred if and only if $\E[(g_{k-1}-(\phi-f))^+]\le f$. $V_0$ is continuous and non-increasing in $f$ and equals $-\phi\le0$ once $f\ge\phi-\min g_{k-1}$, so a smallest deterring forfeit $f^*$ exists whenever $V_0(0)>0$.
 \end{proposition}
-The proof (Appendix~\ref{app:proofs}) shows that waiting is always worth at least authorizing, because $\max(x-\phi,-f)$ is convex and the price is a martingale; $k\ge2$ is needed because with $k=1$ there is no block at which to authorize.
-
-
-In words, the speculator should wait until the last block and authorize only if the trade is then worth more than the fee minus the forfeit. Because a dropped commitment is always observed, the deterrence condition is the analogue of Becker's classical rule for penalties with certain detection, that the penalty must cover the expected gain from the offence~\cite{becker1968crime}, with the gain here being the value of an option. Ruling out early authorization extends Merton's result that an American call is never exercised early~\cite{merton1973}. The third form says that $f^*$ is the forfeit at which a put option on $g_{k-1}$ with strike $\phi-f$, a contract paying the amount by which $g_{k-1}$ ends below $\phi-f$, is worth exactly the fee $\phi$. The next result gives the condition under which the producer uses the fallback.
+Because the price is a martingale, waiting leaves the expected trade value unchanged while keeping the choice to abandon an unfavourable trade, so waiting is worth at least authorizing early (Appendix~\ref{app:proofs}), so the speculator waits until the last block and authorizes only if the trade is then worth more than the fee minus the forfeit. Since a drop is always observed, this mirrors Becker's rule that a surely detected penalty must cover the expected gain from the offence~\cite{becker1968crime}, here the option's value. Ruling out early authorization parallels Merton's result that an American call, an option to buy at a fixed price at any time before expiry, is never exercised early on an asset that pays no dividends~\cite{merton1973}. The third form says that $f^*$ is the forfeit at which a put option on $g_{k-1}$ with strike $\phi-f$, a contract paying the amount by which $g_{k-1}$ ends below $\phi-f$, is worth exactly the fee $\phi$. The next result gives the condition under which the producer uses the fallback.
 
 \begin{proposition}[Credibility threshold]\label{prop:cred}
 With a fallback, no contestation and the signature handed over, the producer publishes at block $k$ if and only if $\phi-c>\rho_P f$, and it is indifferent at equality. If it publishes, then $V_0=-\phi$ for every $q\in[0,1]$ and every forfeit. If it withholds, the game is the one without a fallback.
 \end{proposition}
 
 
-A credible fallback thus removes the option for any forfeit. The next result shows that the user and producer can nevertheless undo it whenever the forfeit stays inside the pair.
+The next result asks whether this credibility also prevents collusion.
 
 \begin{proposition}[Forfeits that stay inside the pair]\label{prop:imposs}
 Let there be a fallback with the signature handed over, $k\ge2$, $\sigma>0$, $q<1$ and no contestation, and let $\rho_O=0$. If the producer strictly prefers to publish, that is $\phi-c>\rho_P f$, then every equilibrium has a joint payoff of the user and producer of at most $0$, while a coalition with side payments can obtain at least $(1-q)\E[g_1^+]>0$. Such a design is therefore not collusion-proof.
 \end{proposition}
-\emph{Proof idea.} Under strict credibility every commitment executes, the fee cancels inside the pair, and optional stopping caps the joint payoff of any equilibrium at $0$. The coalition instead authorizes at block $1$ only after a price rise and lets the producer withhold otherwise, which costs the pair nothing because $\rho_O=0$. The full proof is in Appendix~\ref{app:proofs}.
+\emph{Proof idea.} Under strict credibility every commitment executes, the fee cancels inside the pair, and by optional stopping the joint payoff of any equilibrium is at most $0$. Because the price is a martingale and execution happens by a fixed deadline, choosing when to execute cannot create a positive expected trading gain. The coalition instead authorizes at block $1$ only after a price rise and lets the producer withhold otherwise, which costs the pair nothing because $\rho_O=0$. The full proof is in Appendix~\ref{app:proofs}.
 
 
-Strictness is needed, since at equality the outcome depends on tie-breaking. In mechanism-design terms, a forfeit that balances the budget of the user--producer pair cannot be both credible and collusion-proof, so some money must leave the pair. This is balance within the pair, not budget balance of a whole mechanism, so the result is an analogue of, not a derivation from, the classical tension between budget balance and other goals~\cite{greenlaffont1977,nath2019budget}; it is closest to Roughgarden's case for burning the base fee.
+Strictness is needed, since at equality the outcome depends on tie-breaking. In mechanism-design terms, a forfeit that balances the budget of the pair cannot be both credible and collusion-proof, so some money must leave the pair. This is balance within the pair, not budget balance of a whole mechanism, so the result is an analogue of, not a derivation from, the classical tension between budget balance and other goals~\cite{greenlaffont1977,nath2019budget}, and it is closest to Roughgarden's case for burning the base fee.
 
-A producer that receives part of the forfeit can also harm an honest user directly. It can refuse to include the user's authorization until the window closes and then withhold the signature, collecting the forfeit, which this report calls extortion. Sharing block production among many producers makes extortion much harder.
-
-Proposition~\ref{prop:rot} (Appendix~\ref{app:proofs}) makes this precise for the rotating-producer model with $q=0$. An honest user loses nothing if $\alpha^{k-1}\rho_P f<\phi$ and strictly loses if $\alpha^{k-1}\rho_P f>\phi$, where $\alpha^{k-1}$ is the chance that the strategic entity produces every authorization block, as in Rapidash's timeout argument~\cite{chung2025rapidash}.
+A producer that receives part of the forfeit can also harm an honest user directly. It can refuse to include the user's authorization until the window closes and then withhold the signature, collecting the forfeit, which this report calls extortion, and Proposition~\ref{prop:rot} (Appendix~\ref{app:proofs}) gives its threshold under rotating producers.
 
 
 
@@ -258,16 +241,16 @@ Proposition~\ref{prop:rot} (Appendix~\ref{app:proofs}) makes this precise for th
 \textbf{Implementation and verification.} The propositions cover the cases with closed forms, and the rest come from a lattice solver, written in Python with NumPy and SciPy (\repo), that computes equilibria by backward induction over the price tree. It reproduces a hand-computed game, agrees with a separate game-tree solver, exhaustive enumeration and textbook binomial option prices, and passes all \NTests\ automated tests, which catch all \NMutants\ deliberately injected bugs (Table~\ref{tab:verify} in the appendix).
 
 
-\textbf{Calibration.} Volatility is the root-mean-square daily log return of Binance ETH/USDT closes, 17 August 2017 to 30 September 2026, giving $\sigma_{\text{day}}=\DailyVol$ from \NReturns\ returns with a $95\%$ moving-block bootstrap interval of \VolCI. The per-block volatility of Section~\ref{sec:model} is $\sigma=\sigma_{\text{day}}\sqrt{12/86400}$, which assumes uncorrelated log returns. The other values in Table~\ref{tab:notation} are chosen and varied below, and displayed minimum forfeits and bonds are rounded up.
+\textbf{Calibration.} Volatility is the root-mean-square daily log return (change in log price) of Binance's daily ether (ETH) closes in USDT, 17 August 2017 to 30 September 2026, giving $\sigma_{\text{day}}=\DailyVol$ from \NReturns\ returns with a $95\%$ moving-block bootstrap interval of \VolCI, which measures uncertainty by repeatedly resampling runs of consecutive days. The per-block volatility of Section~\ref{sec:model} is $\sigma=\sigma_{\text{day}}\sqrt{12/86400}$, which assumes uncorrelated log returns. The other values in Table~\ref{tab:notation} are chosen and varied below, and displayed minimum forfeits and bonds are rounded up.
 
-\begin{figure}[t]
+\begin{figure}[htbp]
 \begin{minipage}[b]{0.44\textwidth}\centering\footnotesize
 \resizebox{\linewidth}{!}{\input{assets/tab_q1}}
-\captionof{table}{$f^*/N$ against window $k$ (blocks), daily volatility and transaction size (a multiple of the baseline, with the fee fixed in money).}\label{tab:q1}
+\captionof{table}{Smallest deterring forfeit $f^*/N$.}\label{tab:q1}
 \end{minipage}\hfill
 \begin{minipage}[b]{0.53\textwidth}\centering
 \begin{tikzpicture}
-\begin{axis}[width=\linewidth,height=4.5cm,font=\scriptsize,xmode=log,
+\begin{axis}[width=\linewidth,height=4.1cm,font=\scriptsize,xmode=log,
   xtick={10,25,50,100,200},xticklabels={10,25,50,100,200},
   xlabel={window $k$ (blocks of 12 s)},ylabel={forfeit (\% of $N$)},
   ymin=0,ymax=3.8,xmin=9,xmax=220,unbounded coords=discard,
@@ -281,64 +264,84 @@ Proposition~\ref{prop:rot} (Appendix~\ref{app:proofs}) makes this precise for th
 \legend{$f_{\mathrm{cp}}$ at 8\% volatility,$f_{\mathrm{cp}}$ at 4.57\% (baseline),$f_{\mathrm{cp}}$ at 2\%,$f^*$ at 4.57\%,collateral limit 1\%}
 \end{axis}
 \end{tikzpicture}
-\caption{Feasibility of a burned forfeit with a fallback. $f^*$ is the smallest deterring forfeit without a fallback (Proposition~\ref{prop:value}), and $f_{\mathrm{cp}}$ the smallest burned forfeit that keeps the coalition gain within $0.1$ bp (Section~\ref{sec:results}).}\label{fig:feasible}
+\caption{Feasibility of a burned forfeit with a fallback.}\label{fig:feasible}
 \end{minipage}
 \end{figure}
 
 \section{Results}\label{sec:results}
 \subsection{Q1. The smallest deterring forfeit}
-The first question is how large a forfeit must be when it is the only defence. Table~\ref{tab:q1} answers it for a burned forfeit, no fallback and a flat fee of $5$ bp, varying one factor at a time. At the baseline, $f^*$ is \FstarKHundred\ of the transaction value (interval \FstarCI), and it grows with the window because prices have more time to move. An \VolSweepFactor-fold rise in volatility raises $f^*$ \VolSweepRatio-fold, because by Proposition~\ref{prop:value} the fixed fee then offsets a smaller share of the option, and for the same reason a flat fee covers less of the option on a large trade.
+Table~\ref{tab:q1} gives the smallest deterring forfeit for burn routing, no fallback and a flat fee of $5$ bp. It varies one factor at a time, namely the window $k$ in blocks, the daily volatility, and the transaction size as a multiple of the baseline with the fee fixed in money. At the baseline, $f^*$ is \FstarKHundred\ of the transaction value (interval \FstarCI), and it grows with the window because prices have more time to move. An \VolSweepFactor-fold rise in volatility raises $f^*$ \VolSweepRatio-fold, because by Proposition~\ref{prop:value} the fixed fee then offsets a smaller share of the option, and for the same reason a flat fee covers less of the option on a large trade.
 
 
-A Gaussian approximation of this put (Appendix~\ref{app:extra}) stays within \GaussMaxRelErr\ of the lattice for fees from $1$ to $20$ bp. Censoring matters little because retries absorb it ($f^*$ is \QfNine\ even at $q=0.9$). Market conditions matter more: volatility across four sub-periods ranges from \VolLow\ to \VolHigh, so $f^*$ ranges from \FstarLow\ to \FstarHigh.
+A Gaussian approximation of the put in Proposition~\ref{prop:value} (Appendix~\ref{app:extra}) stays within \GaussMaxRelErr\ of the lattice for fees from $1$ to $20$ bp. Censoring matters little because retries absorb it ($f^*$ is \QfNine\ even at $q=0.9$). Market conditions matter more. Volatility across four sub-periods ranges from \VolLow\ to \VolHigh, and $f^*$ ranges with it from \FstarLow\ to \FstarHigh.
 
 \textbf{Cost to honest users and feasibility.} An honest user who retries pays only if all $k-1$ attempts are censored, with probability about \HonestDropMax\ at $q=0.6$. The forfeit must, however, be locked as collateral, and under $\kappa_c=\KappaAssumed$ only \NFeasible\ of \NCells\ window and size combinations are feasible.
 
 \subsection{Q2. Where should the forfeit go?}
-Q2 asks whether a fallback does better than a forfeit alone, and where the forfeit's money should go. Over the pooled period (Figure~\ref{fig:q2} and Table~\ref{tab:q2} in the appendix), a forfeit alone deters only above $f^*$, while a fallback with a burned forfeit deters at any forfeit ($0.3f^*$ shown), leaving the speculator only the fee loss $-\phi$ that Proposition~\ref{prop:cred} predicts. Producer routing fails because the producer stops publishing, and an optional signature and self routing fail too, in all five periods.
+Over the full 2017 to 2026 period (Figure~\ref{fig:q2} and Table~\ref{tab:q2} in the appendix), a forfeit alone deters only above $f^*$, while a fallback with a burned forfeit deters at any forfeit ($0.3f^*$ shown), leaving the speculator only the fee loss $-\phi$ that Proposition~\ref{prop:cred} predicts. Producer routing fails because the producer stops publishing, and an optional signature or self routing without a fallback also fails, in the full period and in all four sub-periods.
 
 
 \subsection{Q3. Producers and coalitions}
-By Proposition~\ref{prop:cred}, a credible fallback deters a lone speculator even with no forfeit, so the forfeit's job becomes keeping the producer from exploiting the user and the two from colluding. Q3 studies both.
+Since a credible fallback already deters a lone speculator (Q2), the forfeit's remaining job is to stop the producer from exploiting the user and the two from colluding. Table~\ref{tab:routes} compares the routings in a fallback design at the baseline. A single sequencer that decides every inclusion extorts, in the sense of Section~\ref{sec:theory}, if and only if $f>\phi/\rho_P$. Producer routing is therefore doubly weak, since its producer stops publishing far below $f^*$ and extorts at a forfeit eleven times smaller than $f^*$. Rotating block production raises this threshold, so extortion mainly threatens a rollup with one sequencer (Proposition~\ref{prop:rot}).
 
-\textbf{Extortion by a single producer.} A single sequencer that decides every inclusion censors every attempt and then withholds if and only if $f>\phi/\rho_P$. An honest user then loses its surplus and the forfeit once $f$ exceeds \ThreshProducer\ under producer routing, and \ThreshPool\ under pool(4), while under burn or self routing the producer gains nothing from a drop. Producer routing is thus doubly weak: it fails Q2, and $f^*$ is eleven times its extortion threshold.
-
-\textbf{Rotating producers.} When a strategic entity produces only a share $\alpha$ of the blocks, the extortion threshold grows by $\alpha^{-(k-1)}$ (Proposition~\ref{prop:rot}, confirmed by the solver; $2{,}048$ at $\alpha=0.5$ and $k=12$), so extortion mainly threatens a rollup with one sequencer.
-
-\textbf{Coalitions.} Table~\ref{tab:coal} gives the coalition gain $\Delta$ of Section~\ref{sec:model} in a fallback design. Under burn it falls from \CoalBurnHalf\ bp at $0.5f^*$ to \CoalBurnThree\ bp at $3f^*$. Under self routing it stays at \CoalSelfMin\ bp whatever the forfeit, because the forfeit is only a transfer inside the pair, and under producer routing it rises with the forfeit, because the producer stops publishing. Proposition~\ref{prop:imposs} explains this pattern, and all \ThmN\ random designs meeting its hypotheses have a positive gain. Under burn the benchmark is the honest equilibrium. At a burned forfeit of \CpHundred\ the gain is $0.095$ bp over it but $1.095$ bp over the equilibrium in which the user waits for the fallback, since at $q=0$ the pair then also saves $c=1$ bp. A guarantee across all equilibria at $q=0$ would need $\Delta+c\le\varepsilon$, so a publishing cost below the tolerance is necessary but not sufficient, and the forfeit would have to be recomputed for the budget $\varepsilon-c$.
-
-\textbf{How large must a burned forfeit be?} Let $f_{\mathrm{cp}}$ be the smallest burned forfeit that keeps the coalition gain $\Delta$ within the tolerance $\varepsilon$. Proposition~\ref{prop:imposs} rules out only routings that keep the whole forfeit inside the pair, and Proposition~\ref{prop:route} (Appendix~\ref{app:proofs}) settles which of the rest is cheapest. With a strictly credible fallback the coalition gain depends on the routing only through the amount $\rho_O f$ that leaves the pair, so burning everything needs the smallest forfeit, and pool$(n)$ with $n>1$ needs $f_{\mathrm{cp}}/(1-1/n)$, which is credible only for $n>1+f_{\mathrm{cp}}/(\phi-c)$. At the baseline this gives $n\ge\PoolN$ and \PoolF, above the \KappaAssumed\ collateral limit, matching the solver, while pool(4) fails because withholding pays its producer. Proposition~\ref{prop:route} also shows that a burned forfeit of at least $c-\min g_k$, the publishing cost plus the largest price fall the lattice allows, gives exact collusion-proofness, but at the baseline even a gain within $0.001$ bp needs \CpTolThousandth, about twice the collateral limit (Table~\ref{tab:tol}). The design therefore aims at (CP$_\varepsilon$) with $\varepsilon=0.1$ bp, for which $f_{\mathrm{cp}}$ is \CpHundred\ at the baseline. On a \$100{,}000 trade, with a \$50 fee and \$10 publishing cost, $f_{\mathrm{cp}}$ is \$1{,}350, above a \$1{,}000 collateral cap. It is about \CpRatioHundred\ times $f^*$, and grows with window and volatility (Figure~\ref{fig:feasible}). Since it must be locked as collateral, the design is feasible only where this curve lies below the collateral line. Checking every window, $f_{\mathrm{cp}}$ fits the \KappaAssumed\ limit up to \FrontierK\ blocks (\FrontierMin\ minutes) at the baseline volatility, so the $20$-minute baseline is infeasible, while a $1$ bp tolerance would allow \FrontierTolOneMin\ minutes (Table~\ref{tab:tol}).
-
-\subsection{Q4. Contesting a disputed index}
-On chains where recent blocks can be replaced, one account slot (index) can end up with two valid commitments, the owner's and an attacker's, and a rule must decide which wins. By Proposition~\ref{prop:contest}, a bond $b$ deters if and only if $b\ge b_{\min}=\max\{0,((1-a)V_a-\kappa)/a\}$, and works for sure if the owner can afford it and strictly prefers to answer, $K\ge b_{\min}$ and $V_o+K>c_r$. A race is an all-pay contest~\cite{baye1996allpay} and deters only if $\kappa\ge(1-a)V_a+a(V_a-V_o)^+$. In mechanism terms the bond is a payment the designer can scale, limited only by the owner's capital and its willingness to answer (automatic here, as $c_r\ll V_o$), while the race has nothing to tune. Across the owner's availability $a$ and the value ratio $V_a/V_o$ (Table~\ref{tab:contest}), the race deters in only \ContestRaceDeterCells\ of \ContestCells\ cells, while the bond deters in all \ContestBondDeters\ cells where the owner can afford it, and both patterns hold across all \RobSettings\ tested attack costs and capitals.
-
-\section{Discussion}\label{sec:discussion}
-The guarantees are easy to read as one stronger claim, so Table~\ref{tab:guarantees} states each precisely.
-\begin{table}[h]\centering\scriptsize
-\begin{tabularx}{\textwidth}{|l|Y|}
+\begin{table}[!t]\centering\scriptsize
+\renewcommand{\arraystretch}{1.12}
+\begin{tabularx}{\textwidth}{|l|>{\raggedright\arraybackslash}p{3.0cm}|>{\raggedright\arraybackslash}p{3.1cm}|Y|>{\raggedright\arraybackslash}p{3.2cm}|}
 \hline
-\rowcolor{gray!15}Property & What it means here \\
+\rowcolor{gray!15}Routing $(\rho_U,\rho_P,\rho_O)$ & Producer publishes (CR) & Single-producer extortion & Coalition gain $\Delta$ & Outcome \\
 \hline
-Deterrence & Weak: a speculator gains at most zero and, if indifferent, is assumed to stay out \\
+Self $(1,0,0)$ & Always & Never & \CoalSelfMin\ bp at every forfeit & Fails (CP$_\varepsilon$) \\
 \hline
-Individual rationality & Honest users still take part, but without a fallback may fall slightly short of $v-\phi$ \\
+Producer $(0,1,0)$ & Only if $f<\phi-c=4$ bp & Above \ThreshProducer & Rises with $f$ & Fails (CR) and (CP$_\varepsilon$) \\
 \hline
-Credible fallback & Publishing is strictly better for a producer paid only fees and forfeits \\
+Pool(4) $(0,\tfrac14,\tfrac34)$ & Only if $f<4(\phi-c)=16$ bp & Above \ThreshPool & Producer withholds & Fails (CR) \\
 \hline
-Collusion-proofness & Joint gain over the best equilibrium is at most $\varepsilon$, a money amount ($0.1$ bp is \$1 on \$100{,}000), and $c(1-q^{k-1})$ more against waiting \\
+Pool$(n)$, $n\ge\PoolN$ & Yes, at \PoolF & Only above $n\phi\ge1.75\%$ & Within $0.1$ bp at \PoolF & Works, above the \KappaAssumed\ limit \\
 \hline
-Feasible window & Only for the chosen parameters, from \FrontierTwoMin\ minutes at $2\%$ daily volatility to \FrontierEightMin\ at $8\%$ \\
-\hline
-Producers & One producer for the whole window; with many producers the coalition risk is overstated \\
+Burn $(0,0,1)$ & Always & Never & $0.095$ bp at \CpHundred & Cheapest, but exceeds the 1\% collateral cap \\
 \hline
 \end{tabularx}
-\caption{What each guarantee does and does not promise.}\label{tab:guarantees}
+\caption{Routings in a fallback design at the 20-minute baseline.}\label{tab:routes}
 \end{table}
 
-The forfeit from 14 calm days of real 20-minute ETH price changes, recentred to mean zero, is \TwFstar\ with a $95\%$ bootstrap interval of \TwCI, against \TwLognormal\ for the lattice at the same volatility. This checks only the end-of-window distribution that Proposition~\ref{prop:value} uses, not the block-by-block dynamics, and says nothing about stressed markets. All answers rest on a stylized model with fee-only producers, independent censoring, a fair lattice, risk neutrality and binding side contracts, though by Jensen's inequality a speculator deterred under risk neutrality stays deterred under risk aversion.
+\textbf{Coalitions.} Under burn the coalition gain $\Delta$ falls from \CoalBurnHalf\ bp at $0.5f^*$ to \CoalBurnThree\ bp at $3f^*$ (Table~\ref{tab:coal} in the appendix), while under self and producer routing it never falls (Table~\ref{tab:routes}). Proposition~\ref{prop:imposs} explains why routings that keep the forfeit in the pair fail, and all \ThmN\ random designs meeting its hypotheses have a positive gain. At a burned forfeit of \CpHundred\ the gain is $0.095$ bp over the honest equilibrium but $1.095$ bp over the equilibrium in which the user waits for the fallback, since at $q=0$ the pair then also saves $c=1$ bp.
+
+\textbf{How large must a burned forfeit be?} Let $f_{\mathrm{cp}}$ be the smallest burned forfeit that keeps the coalition gain $\Delta$ within the tolerance $\varepsilon$. By Proposition~\ref{prop:route} (Appendix~\ref{app:proofs}), with a strictly credible fallback the coalition gain depends on the routing only through the amount $\rho_O f$ that leaves the pair, so burning everything needs the smallest forfeit, and pool$(n)$ with $n>1$ needs $f_{\mathrm{cp}}/(1-1/n)$, which is credible only for $n>1+f_{\mathrm{cp}}/(\phi-c)$, and the baseline values in Table~\ref{tab:routes} match the solver. Proposition~\ref{prop:route} also shows that a burned forfeit of at least $c-\min g_k$, the publishing cost plus the largest price fall the lattice allows, gives exact collusion-proofness, but at the baseline even a gain within $0.001$ bp needs \CpTolThousandth, about twice the collateral limit (Table~\ref{tab:tol}). The design therefore aims at (CP$_\varepsilon$) with $\varepsilon=0.1$ bp, for which the baseline $f_{\mathrm{cp}}=\CpHundred$ is about \CpRatioHundred\ times $f^*$. On a \$100{,}000 trade this means \$1{,}350 of collateral against a \$1{,}000 cap. Figure~\ref{fig:feasible} shows this forfeit growing with window and volatility, and the design is feasible only where its curve lies below the collateral line. Across all windows, $f_{\mathrm{cp}}$ fits the \KappaAssumed\ limit up to \FrontierK\ blocks (\FrontierMin\ minutes) at the baseline volatility, so the $20$-minute baseline is infeasible, while a $1$ bp tolerance allows \FrontierTolOneMin\ minutes (Table~\ref{tab:tol}).
+
+\subsection{Q4. Contesting a disputed index}
+For the contest of Section~\ref{sec:model}, with $a>0$, Proposition~\ref{prop:contest} gives the smallest deterring bond $b_{\min}=\max\{0,((1-a)V_a-\kappa)/a\}$ when a present owner answers. The owner can answer when $b\le K$ and strictly prefers to when $V_o+b>c_r$, so an affordable deterring bond exists exactly when $K\ge b_{\min}$ and $V_o+K>c_r$. A race deters only if $\kappa\ge(1-a)V_a+a(V_a-V_o)^+$, so unlike the bond, a payment the designer can scale up to the owner's capital, it has nothing to tune. Across the owner's availability $a$ and the value ratio $V_a/V_o$ (Table~\ref{tab:contest}), the race deters in only \ContestRaceDeterCells\ of \ContestCells\ cells, while the bond deters in all \ContestBondDeters\ cells where the owner can afford it, across \RobSettings\ tested costs and capitals.
+
+\section{Discussion}\label{sec:discussion}
+Taken together, the results give the design recipe of Table~\ref{tab:recipe}, and three lessons stand behind it. First, the penalty can be priced rather than guessed, because Proposition~\ref{prop:value} turns it into an option price. Second, where the money goes matters more than how much there is, since paying the producer invites extortion while burning, as the draft EIP-8209 already does, is the cheapest routing that works. Third, a fallback moves the cost rather than removing it, because collusion then sets the collateral, and that cost grows with the window and with volatility. In mechanism-design terms, this is collusion-proof design in which the agent that enforces the rules is itself a player, and Table~\ref{tab:guarantees} in Appendix~\ref{app:choices} states the limits of each guarantee.
+
+\begin{table}[htbp]\centering\scriptsize
+\renewcommand{\arraystretch}{1.12}
+\begin{tabularx}{\textwidth}{|l|>{\raggedright\arraybackslash}p{4.6cm}|Y|}
+\hline
+\rowcolor{gray!15}Design choice & Recommendation & Evidence \\
+\hline
+Fallback & Producer may publish $\Sigma$, with $\phi-c>\rho_P f$ & Removes the option at any forfeit (Proposition~\ref{prop:cred}, Q2) \\
+\hline
+Routing & Burn the whole forfeit & No forfeit kept inside the pair stops collusion (Proposition~\ref{prop:imposs}), and burning needs the least (Proposition~\ref{prop:route}) \\
+\hline
+Size & $f_{\mathrm{cp}}$, about \CpRatioHundred\ times $f^*$ & Collusion, not speculation, sets the collateral (Q3) \\
+\hline
+Window & At most \FrontierMin\ minutes at baseline & Falls from \FrontierTwoMin\ minutes at $2\%$ daily volatility to \FrontierEightMin\ at $8\%$ \\
+\hline
+Producers & Rotate block production & Extortion threshold rises $\alpha^{-(k-1)}$-fold, $2{,}048$-fold at $\alpha=0.5$, $k=12$ (Proposition~\ref{prop:rot}) \\
+\hline
+Disputes & An affordable bond that the owner will answer & A race deters in only \ContestRaceDeterCells\ of \ContestCells\ cells (Q4) \\
+\hline
+\end{tabularx}
+\caption{The design recipe and the evidence for each choice.}\label{tab:recipe}
+\end{table}
+
+\textbf{Robustness and limits.} The forfeit from 14 calm days of real 20-minute ETH price changes, recentred to mean zero, is \TwFstar\ ($95\%$ bootstrap interval \TwCI), against \TwLognormal\ for the lattice at the same volatility, which checks only the end-of-window distribution in calm markets. The model assumes fee-only producers, independent censoring, a fair lattice, risk neutrality and binding side contracts, and some of these err on the safe side, since risk aversion only lowers the option's value (Jensen's inequality) and binding contracts with one producer overstate collusion.
 
 \section{Conclusion and Future Work}\label{sec:disc}
-Delaying authorization hands the user a free option. A forfeit alone must be \FstarLow\ to \FstarHigh\ of a 20-minute trade (Q1). With a fallback it must not stay entirely with the user and producer, and sending it all outside, say by burning, is cheapest (Q2). At 20 minutes a burned \CpHundred\ keeps collusion within tolerance, and the required forfeit fits \KappaAssumed\ collateral only up to \FrontierMin\ minutes (Q3). An affordable, answered bond deters disputes that a race cannot (Q4). Future work should add order profits~\cite{daian2020flashboys}, known block schedules, an equilibrium-robust collusion guarantee and a screening menu for private types.
+The delay that keeps large post-quantum signatures off the ledger hands every user a free option, and this report shows that incentives alone can remove it. A forfeit alone must be \FstarLow\ to \FstarHigh\ of a 20-minute trade (Q1). With a fallback, part of the forfeit must leave the user and producer, and burning all of it is cheapest (Q2). A burned \CpHundred\ keeps collusion within $0.1$ bp at 20 minutes but fits \KappaAssumed\ collateral only up to \FrontierMin\ minutes (Q3), and an affordable, answered bond deters disputes that a race cannot (Q4). The broader lesson is that money must leave the pair, and windows must shorten as volatility rises.
+
+Future work should add ordering profits~\cite{daian2020flashboys} and known producer schedules, seek a collusion guarantee for every equilibrium, adapt the window to volatility, and test stressed markets.
 
 \begin{thebibliography}{99}
 \interlinepenalty=10000
@@ -408,7 +411,7 @@ I chose the research questions, the model and the overall direction of the proje
 
 \appendix
 \section{Proofs}\label{app:proofs}
-This appendix proves the seven propositions one step at a time. Each step states one fact and the reason it holds. Throughout, $g_t=N(S_t/S_0-1)$ is the value at block $t$ of executing the trade at the committed price, $\mathcal F_t$ is everything observed up to block $t$ (prices and which attempts were included), and censoring is independent of prices.
+This appendix gives the full proofs of Propositions~\ref{prop:value} to~\ref{prop:route}. Each step states one fact and the reason it holds. Throughout, $g_t=N(S_t/S_0-1)$ is the value at block $t$ of executing the trade at the committed price, $\mathcal F_t$ is everything observed up to block $t$ (prices and which attempts were included), and censoring is independent of prices. We write $\Pr(A)$ for the probability of event $A$ and $\mathbf 1_A$ for its indicator, equal to one when $A$ happens and zero otherwise.
 
 \textbf{Lemma A.1 (the lattice price is a martingale).} $\E[S_{t+1}\mid\mathcal F_t]=S_t$, and therefore $\E[g_{t+1}\mid\mathcal F_t]=g_t$ and $\E[g_t]=g_0=0$ for every $t$.
 
@@ -420,22 +423,16 @@ This appendix proves the seven propositions one step at a time. Each step states
 \item[\emph{Step 4.}] By the tower property, $\E[g_t]=\E[g_{t-1}]=\dots=g_0=N(S_0/S_0-1)=0$. \hfill$\square$
 \end{steps}
 
-\emph{Proof of Proposition~\ref{prop:self}.}
-\begin{steps}
-\item[\emph{Step 1.}] The terminal payoffs (user, producer) are $(g_t-\phi,\ \phi)$ for an authorization at block $t$, $(g_k-\phi,\ \phi-c)$ for a publication, and $(-(1-\rho_U)f,\ \rho_P f)$ for a drop (Figure~\ref{fig:tree}).
-\item[\emph{Step 2.}] Self routing is $\rho=(1,0,0)$, so the drop payoff is $(-(1-1)f,\ 0\cdot f)=(0,0)$.
-\item[\emph{Step 3.}] The other terminal payoffs do not contain $f$ at all.
-\item[\emph{Step 4.}] So every terminal payoff, and hence every expected payoff, every equilibrium and every coalition value, is the same for all $f$. \hfill$\square$
-\end{steps}
+Proposition~\ref{prop:self} is proved in Section~\ref{sec:theory}.
 
-\emph{Proof of Proposition~\ref{prop:value}.} There is no fallback, $k\ge2$ and $q=0$, so every attempt is included and the user simply chooses when, if ever, to authorize. Let $\psi(x)=\max(x-\phi,-f)$ and $W_t=\E[\psi(g_{k-1})\mid\mathcal F_t]$ for $t\le k-1$.
+\emph{Proof of Proposition~\ref{prop:value}.} There is no fallback, $k\ge2$ and $q=0$, so every attempt is included and the user simply chooses when, if ever, to authorize. Let $V_t$ be the user's optimal expected continuation payoff at block $t$, given the information $\mathcal F_t$ then available. Let $\psi(x)=\max(x-\phi,-f)$ and $W_t=\E[\psi(g_{k-1})\mid\mathcal F_t]$ for $t\le k-1$.
 \begin{steps}
 \item[\emph{Step 1.}] At block $k-1$, the last block with an authorization move, the user compares authorizing, worth $g_{k-1}-\phi$, with letting the commitment drop, worth $-f$. Hence $V_{k-1}=\psi(g_{k-1})=W_{k-1}$.
 \item[\emph{Step 2.}] At a block $t$ with $1\le t\le k-2$, the user compares authorizing now, worth $g_t-\phi$, with waiting, worth $\E[V_{t+1}\mid\mathcal F_t]$. So $V_t=\max\big(g_t-\phi,\ \E[V_{t+1}\mid\mathcal F_t]\big)$.
 \item[\emph{Step 3.}] Suppose, as the induction hypothesis, that $V_{t+1}=W_{t+1}$. By the tower property, $\E[W_{t+1}\mid\mathcal F_t]=W_t$, so Step 2 gives $V_t=\max(g_t-\phi,\ W_t)$.
 \item[\emph{Step 4.}] $\psi$ is convex, being the maximum of two affine functions. By Jensen's inequality and Lemma~A.1,
 \[W_t=\E[\psi(g_{k-1})\mid\mathcal F_t]\ \ge\ \psi\big(\E[g_{k-1}\mid\mathcal F_t]\big)=\psi(g_t).\]
-\item[\emph{Step 5.}] By the definition of $\psi$, $\psi(g_t)\ge g_t-\phi$. With Step 4, $W_t\ge g_t-\phi$, so Step 3 gives $V_t=W_t$: waiting is always worth at least authorizing now.
+\item[\emph{Step 5.}] By the definition of $\psi$, $\psi(g_t)\ge g_t-\phi$. With Step 4, $W_t\ge g_t-\phi$, so Step 3 gives $V_t=W_t$, which means that waiting is always worth at least authorizing now.
 \item[\emph{Step 6.}] Steps 1 to 5 prove $V_t=W_t$ for $t=k-1,k-2,\dots,1$ by backward induction. Block $1$ exists because $k\ge2$. The value of committing is therefore $V_0=\E[V_1]=\E[W_1]=\E[\psi(g_{k-1})]$, the first form.
 \item[\emph{Step 7.}] For any $x$, $\max(x,-f)=-f+(x+f)^+$. Putting $x=g_{k-1}-\phi$ gives $\psi(g_{k-1})=-f+\big(g_{k-1}-(\phi-f)\big)^+$, and taking expectations gives the second form.
 \item[\emph{Step 8.}] For any number $a$, $(g-a)^+-(a-g)^+=g-a$. Taking expectations with Lemma~A.1, $\E[(g_{k-1}-a)^+]-\E[(a-g_{k-1})^+]=-a$.
@@ -460,7 +457,7 @@ This appendix proves the seven propositions one step at a time. Each step states
 
 \emph{Proof of Proposition~\ref{prop:imposs}.} There is a fallback with the signature handed over, $k\ge2$, $\sigma>0$, $q<1$, no contestation, $\rho_O=0$ and $\phi-c>\rho_P f$.
 
-\emph{Part 1: every equilibrium gives the pair at most $0$.}
+\emph{Part 1. Every equilibrium gives the pair at most $0$.}
 \begin{steps}
 \item[\emph{Step 1.}] By Step 2 of the proof of Proposition~\ref{prop:cred}, the strict inequality makes publishing the producer's unique best response at every unauthorized node of block $k$, in every equilibrium. So no commitment is ever dropped.
 \item[\emph{Step 2.}] Let $\tau$ be the block at which the trade executes, either the block of the first included authorization or $k$ if the producer publishes. Whether $\tau\le t$ depends only on $\mathcal F_t$, so $\tau$ is a stopping time, and $\tau\le k$.
@@ -469,13 +466,13 @@ This appendix proves the seven propositions one step at a time. Each step states
 \item[\emph{Step 5.}] $(g_t)$ is a martingale by Lemma~A.1, since censoring is independent of prices, and $\tau$ is bounded by $k$, so the optional stopping theorem gives $\E[g_\tau]=g_0=0$.
 \item[\emph{Step 6.}] Every equilibrium therefore gives the pair an expected joint payoff of at most $0$.
 \end{steps}
-\emph{Part 2: a coalition gets $(1-q)\E[g_1^+]>0$.}
+\emph{Part 2. A coalition gets $(1-q)\E[g_1^+]>0$.}
 \begin{steps}
-\item[\emph{Step 7.}] With enforceable side payments, the pair can follow any joint strategy. Take this one: the user attempts at block $1$ if and only if $g_1>0$ and never attempts otherwise, and the producer withholds at every node of block $k$.
+\item[\emph{Step 7.}] With enforceable side payments, the pair can follow any joint strategy. Take the one in which the user attempts at block $1$ if and only if $g_1>0$ and never attempts otherwise, and the producer withholds at every node of block $k$.
 \item[\emph{Step 8.}] If $g_1>0$ and the attempt is included, which happens with probability $1-q$, the joint payoff is $g_1$.
 \item[\emph{Step 9.}] Otherwise the commitment is dropped, and the joint drop payoff is $-(1-\rho_U)f+\rho_P f=-(1-\rho_U-\rho_P)f=-\rho_O f=0$.
 \item[\emph{Step 10.}] Since censoring is independent of the price, the coalition's expected joint payoff is $(1-q)\E[g_1\mathbf 1\{g_1>0\}]=(1-q)\E[g_1^+]$.
-\item[\emph{Step 11.}] This is positive. Block $1$ is an authorization block because $k\ge2$; $\sigma>0$ gives $u>1>d$ and so $0<p<1$; the up-move gives $g_1=N(u-1)>0$ with probability $p$; and $1-q>0$.
+\item[\emph{Step 11.}] This is positive. Block $1$ is an authorization block because $k\ge2$, $\sigma>0$ gives $u>1>d$ and so $0<p<1$, the up-move gives $g_1=N(u-1)>0$ with probability $p$, and $1-q>0$.
 \item[\emph{Step 12.}] So the coalition value exceeds every equilibrium joint payoff by at least $(1-q)\E[g_1^+]>0$. With quasi-linear utilities this surplus can be split so that the user and the producer both gain strictly, so the design is not collusion-proof. \hfill$\square$
 \end{steps}
 
@@ -487,22 +484,22 @@ Let $k\ge2$, $q=0$, $c>0$, $\rho_P>0$, let there be a fallback, and let the user
 \emph{Proof of Proposition~\ref{prop:rot}.} Call the strategic entity $E$. Each block's producer is $E$ with probability $\alpha$, independently of everything else, and an honest producer otherwise, who includes every attempt and publishes at block $k$. Let $W_t$ be $E$'s expected payoff at the start of block $t$, before the producer of block $t$ is drawn, while the user is still unauthorized.
 \begin{steps}
 \item[\emph{Step 1.}] The honest user values execution at $v$ whenever it happens, so attempting at every block weakly dominates waiting, and the user attempts at every block $1,\dots,k-1$.
-\item[\emph{Step 2.}] At block $k$: with probability $\alpha$, $E$ produces and takes the better of $\phi-c$ (publish) and $\rho_P f$ (withhold); otherwise an honest producer publishes and $E$ gets $0$. So $W_k=\alpha\max(\phi-c,\ \rho_P f)$.
-\item[\emph{Step 3.}] At a block $t<k$: with probability $1-\alpha$ an honest producer includes the attempt and $E$ gets $0$. With probability $\alpha$, $E$ produces and gets $\phi$ by including or $W_{t+1}$ by censoring. So $W_t=\alpha\max(\phi,\ W_{t+1})$, and $E$ strictly prefers to censor at block $t$ if and only if $W_{t+1}>\phi$.
+\item[\emph{Step 2.}] At block $k$, with probability $\alpha$, $E$ produces and takes the better of $\phi-c$ (publish) and $\rho_P f$ (withhold), and otherwise an honest producer publishes and $E$ gets $0$. So $W_k=\alpha\max(\phi-c,\ \rho_P f)$.
+\item[\emph{Step 3.}] At a block $t<k$, with probability $1-\alpha$ an honest producer includes the attempt and $E$ gets $0$. With probability $\alpha$, $E$ produces and gets $\phi$ by including or $W_{t+1}$ by censoring. So $W_t=\alpha\max(\phi,\ W_{t+1})$, and $E$ strictly prefers to censor at block $t$ if and only if $W_{t+1}>\phi$.
 \end{steps}
-\emph{Case 1: $\alpha^{k-1}\rho_P f>\phi$.}
+\emph{Case 1, where $\alpha^{k-1}\rho_P f>\phi$.}
 \begin{steps}
 \item[\emph{Step 4.}] Since $\alpha\le1$, $\rho_P f\ge\alpha^{k-1}\rho_P f>\phi>\phi-c$, so Step 2 gives $W_k=\alpha\rho_P f$.
 \item[\emph{Step 5.}] Suppose $W_{t+1}=\alpha^{k-t}\rho_P f$ for some $1\le t\le k-1$. Since $k-t\le k-1$ and $\alpha\le1$, $W_{t+1}\ge\alpha^{k-1}\rho_P f>\phi$, so Step 3 gives $W_t=\alpha W_{t+1}=\alpha^{k-t+1}\rho_P f$. By induction from Step 4, $W_{t+1}>\phi$ at every block $t=1,\dots,k-1$.
 \item[\emph{Step 6.}] Hence $E$ censors at every block it produces and, by Step 4, withholds at block $k$.
 \item[\emph{Step 7.}] If $E$ produces all $k$ blocks, which has probability $\alpha^k>0$, the commitment is dropped and the user gets $-(1-\rho_U)f\le0<v-\phi$. Otherwise it gets $v-\phi$. Its expected payoff is therefore strictly below $v-\phi$.
 \end{steps}
-\emph{Case 2: $\alpha^{k-1}\rho_P f<\phi$.}
+\emph{Case 2, where $\alpha^{k-1}\rho_P f<\phi$.}
 \begin{steps}
-\item[\emph{Step 8.}] Claim: $W_{t+1}\le\max(\alpha\phi,\ \alpha^{k-t}\rho_P f)$ for $t=k-1,\dots,1$. For $t=k-1$ this is $W_k=\alpha\max(\phi-c,\rho_P f)\le\max(\alpha\phi,\alpha\rho_P f)$.
+\item[\emph{Step 8.}] We claim that $W_{t+1}\le\max(\alpha\phi,\ \alpha^{k-t}\rho_P f)$ for $t=k-1,\dots,1$. For $t=k-1$ this is $W_k=\alpha\max(\phi-c,\rho_P f)\le\max(\alpha\phi,\alpha\rho_P f)$.
 \item[\emph{Step 9.}] If the claim holds at $t$, Step 3 gives $W_t\le\alpha\max\big(\phi,\ \alpha\phi,\ \alpha^{k-t}\rho_P f\big)=\max\big(\alpha\phi,\ \alpha^{k-t+1}\rho_P f\big)$, using $\alpha\phi\le\phi$. This is the claim at $t-1$.
-\item[\emph{Step 10.}] If $\alpha<1$: at $t=1$ the claim gives $W_2\le\max(\alpha\phi,\ \alpha^{k-1}\rho_P f)<\phi$, because $\alpha\phi<\phi$ and by the case assumption. So $E$ strictly prefers to include at block $1$, an honest producer includes too, and the first attempt is included whoever produces block $1$.
-\item[\emph{Step 11.}] If $\alpha=1$: $W_k=\max(\phi-c,\ \rho_P f)<\phi$, because $c>0$ and $\rho_P f=\alpha^{k-1}\rho_P f<\phi$. So $E$ strictly prefers to include at block $k-1$, and the trade executes by block $k-1$ at the latest.
+\item[\emph{Step 10.}] If $\alpha<1$, then at $t=1$ the claim gives $W_2\le\max(\alpha\phi,\ \alpha^{k-1}\rho_P f)<\phi$, because $\alpha\phi<\phi$ and by the case assumption. So $E$ strictly prefers to include at block $1$, an honest producer includes too, and the first attempt is included whoever produces block $1$.
+\item[\emph{Step 11.}] If $\alpha=1$, then $W_k=\max(\phi-c,\ \rho_P f)<\phi$, because $c>0$ and $\rho_P f=\alpha^{k-1}\rho_P f<\phi$. So $E$ strictly prefers to include at block $k-1$, and the trade executes by block $k-1$ at the latest.
 \item[\emph{Step 12.}] In both sub-cases the commitment is never dropped. The honest user's value does not depend on when the trade executes, so it receives $v-\phi$ and loses nothing.
 \end{steps}
 At $\alpha^{k-1}\rho_P f=\phi$ the entity is indifferent at block $1$, and the outcome depends on how it breaks the tie. \hfill$\square$
@@ -510,9 +507,9 @@ At $\alpha^{k-1}\rho_P f=\phi$ the entity is indifferent at block $1$, and the o
 The bond-and-race result used in Q4 is stated here.
 
 \begin{proposition}[Bond and race]\label{prop:contest}
-Deterrence means that attacking is not strictly profitable, and an attacker indifferent at a zero payoff is taken to abstain. (a) Let $a>0$, $0\le b\le K$ and $b_{\min}=\max\{0,((1-a)V_a-\kappa)/a\}$. If a present owner answers, which it strictly prefers when $V_o+b>c_r$ and is indifferent about at equality, the attacker attacks if and only if $a(-\kappa-b)+(1-a)(V_a-\kappa)>0$, so the bond deters if and only if $b\ge b_{\min}$. A deterring bond that the owner strictly prefers to answer therefore exists if and only if $K\ge b_{\min}$ and $V_o+K>c_r$; at $V_o+K=c_r$ the outcome depends on how the indifferent owner breaks its tie (the solver lets it answer). If $b>K$ the owner cannot answer. (b) Under a race, with the owner present the attacker's equilibrium payoff is $(V_a-V_o)^+$, so the race deters if and only if $\kappa\ge(1-a)V_a+a(V_a-V_o)^+$. The designer has no parameter that changes this threshold.
+Deterrence means that attacking is not strictly profitable, and an attacker indifferent at a zero payoff is taken to abstain. (a) Let $a>0$, $0\le b\le K$ and $b_{\min}=\max\{0,((1-a)V_a-\kappa)/a\}$. If a present owner answers, which it strictly prefers when $V_o+b>c_r$ and is indifferent about at equality, the attacker attacks if and only if $a(-\kappa-b)+(1-a)(V_a-\kappa)>0$, so the bond deters if and only if $b\ge b_{\min}$. A deterring bond that the owner strictly prefers to answer therefore exists if and only if $K\ge b_{\min}$ and $V_o+K>c_r$. At $V_o+K=c_r$ the outcome depends on how the indifferent owner breaks its tie (the solver lets it answer). If $b>K$ the owner cannot answer. (b) Under a race, with the owner present the attacker's equilibrium payoff is $(V_a-V_o)^+$, so the race deters if and only if $\kappa\ge(1-a)V_a+a(V_a-V_o)^+$. The designer has no parameter that changes this threshold.
 \end{proposition}
-\emph{Proof of Proposition~\ref{prop:contest}, part (a): the bond.}
+\emph{Proof of Proposition~\ref{prop:contest}, part (a), the bond.}
 \begin{steps}
 \item[\emph{Step 1.}] A present owner who answers keeps the index and wins the bond at cost $c_r$, a payoff of $b-c_r$, while not answering loses the index, a payoff of $-V_o$. So it strictly prefers to answer if and only if $b-c_r>-V_o$, that is, $V_o+b>c_r$, is indifferent at equality, and can answer only if it can post the bond, $b\le K$.
 \item[\emph{Step 2.}] If the owner is present and answers, which happens with probability $a$, the attacker pays its cost and loses the bond, $-\kappa-b$. Otherwise it takes the index, $V_a-\kappa$.
@@ -521,7 +518,7 @@ Deterrence means that attacking is not strictly profitable, and an attacker indi
 \item[\emph{Step 5.}] A deterring bond that the owner strictly prefers to answer is a $b$ with $b_{\min}\le b\le K$ and $V_o+b>c_r$, a guarantee that holds however an indifferent owner would break its tie. Since $V_o+b$ increases in $b$, such a $b$ exists if and only if $b=K$ is one, that is, if and only if $K\ge b_{\min}$ and $V_o+K>c_r$.
 \item[\emph{Step 6.}] If $b>K$, the owner cannot post the bond, so it cannot answer. \hfill$\square$
 \end{steps}
-\emph{Part (b): the race.}
+\emph{Part (b), the race.}
 \begin{steps}
 \item[\emph{Step 7.}] If the owner is absent, which happens with probability $1-a$, the attacker takes the index unopposed, worth $V_a$ before its cost.
 \item[\emph{Step 8.}] If the owner is present, the two pay for priority and the earlier inclusion wins, whatever the payments, which is a complete-information all-pay contest with values $V_a$ and $V_o$.
@@ -530,12 +527,12 @@ Deterrence means that attacking is not strictly profitable, and an attacker indi
 \item[\emph{Step 11.}] This threshold depends only on $a$, $V_a$, $V_o$ and $\kappa$, none of which the designer sets. \hfill$\square$
 \end{steps}
 
-The routing result used in Q3 is stated and proved here.
+The routing result used in Q3 is stated and proved here. Its threshold $F$ is the smallest burned forfeit $f_{\mathrm{cp}}$ of Section~\ref{sec:results}.
 
 \begin{proposition}[Burning is the cheapest routing]\label{prop:route}
-Fix $k$, $q\in[0,1]$, $0<c<\phi$ and the price lattice, let the producer receive the signature and be allowed to publish it, and consider forfeit--routing pairs $(f,\rho)$ that are strictly credible, $\rho_P f<\phi-c$. Then:
-(a) the coalition gain $\Delta$ depends on $(f,\rho)$ only through $b=\rho_O f$, and is continuous and non-increasing in $b$;
-(b) the smallest burned forfeit $F$ with $\Delta\le\varepsilon$ exists, and a pair $(f,\rho)$ meets (CP$_\varepsilon$) if and only if $\rho_O f\ge F$. Hence, if $F=0$, a zero forfeit meets (CP$_\varepsilon$) under every routing. If $F>0$, no routing with $\rho_O=0$ meets it with a finite forfeit, and a routing with $\rho_O>0$ meets it with the forfeit $F/\rho_O$, provided this forfeit is strictly credible, $\rho_P F/\rho_O<\phi-c$. The forfeit $F/\rho_O$ is smallest at $\rho_O=1$, when all of it leaves the pair, by burning or by payment to any passive outside recipient. For pool$(n)$ with $n>1$ it is $Fn/(n-1)$, strictly credible if and only if $n>1+F/(\phi-c)$, and pool$(1)$ is producer routing, with $\rho_O=0$;
+Fix $k$, $q\in[0,1]$, $0<c<\phi$ and the price lattice, let the producer receive the signature and be allowed to publish it, and consider pairs $(f,\rho)$ of forfeit and routing that are strictly credible, $\rho_P f<\phi-c$. Then the following hold.
+(a) the coalition gain $\Delta$ depends on $(f,\rho)$ only through $b=\rho_O f$, and is continuous and non-increasing in $b$.
+(b) the smallest burned forfeit $F$ with $\Delta\le\varepsilon$ exists, and a pair $(f,\rho)$ meets (CP$_\varepsilon$) if and only if $\rho_O f\ge F$. Hence, if $F=0$, a zero forfeit meets (CP$_\varepsilon$) under every routing. If $F>0$, no routing with $\rho_O=0$ meets it with a finite forfeit, and a routing with $\rho_O>0$ meets it with the forfeit $F/\rho_O$, provided this forfeit is strictly credible, $\rho_P F/\rho_O<\phi-c$. The forfeit $F/\rho_O$ is smallest at $\rho_O=1$, when all of it leaves the pair, by burning or by payment to any passive outside recipient. For pool$(n)$ with $n>1$ it is $Fn/(n-1)$, strictly credible if and only if $n>1+F/(\phi-c)$, and pool$(1)$ is producer routing, with $\rho_O=0$.
 (c) under burn, any $f\ge c-\min g_k$ gives $\Delta=0$.
 \end{proposition}
 \emph{Proof.}
@@ -549,36 +546,36 @@ Fix $k$, $q\in[0,1]$, $0<c<\phi$ and the price lattice, let the producer receive
 \item[\emph{Step 7.}] Under burn with $f\ge c-\min g_k$, at every node of block $k$ we have $g_k-c\ge\min g_k-c\ge-f$, so withholding is never better for the coalition than publishing. The coalition then faces the equilibrium problem of Steps 1 and 2, so $J^*=-c\,q^{k-1}$ and $\Delta=0$. This proves (c). \hfill$\square$
 \end{steps}
 
-\textbf{Solver recurrence.} The lattice solver of Section~\ref{sec:framework} computes the user's value $V_t(j)$ at block $t$ after $j$ up-moves. At block $k$ it is $g_k-\phi$ if the producer publishes and $-(1-\rho_U)f$ if the producer withholds or holds no signature, where the producer publishes when $\phi-c>\rho_P f$ (Proposition~\ref{prop:cred}) and ties are handled as in Section~\ref{sec:model}. Writing $C_t(j)=pV_{t+1}(j+1)+(1-p)V_{t+1}(j)$ for the value of waiting, the value at an authorization block $1\le t\le k-1$ is
+\textbf{Solver recurrence.} The lattice solver of Section~\ref{sec:framework} computes the user's value $V_t(j)$ at block $t$ after $j$ up-moves, where $g_t(j)$ is the execution gain at that node. At block $k$ it is $g_k-\phi$ if the producer publishes and $-(1-\rho_U)f$ if the producer withholds or holds no signature, where the producer publishes when $\phi-c>\rho_P f$ (Proposition~\ref{prop:cred}) and ties are handled as in Section~\ref{sec:model}. Writing $C_t(j)=pV_{t+1}(j+1)+(1-p)V_{t+1}(j)$ for the value of waiting, the value at an authorization block $1\le t\le k-1$ is
 \[V_t(j)=\max\big\{C_t(j),\ (1-q)\big(g_t(j)-\phi\big)+q\,C_t(j)\big\},\]
 because an attempt succeeds with probability $1-q$ and otherwise the user simply continues. Finally $V_0=pV_1(1)+(1-p)V_1(0)$. The coalition's value uses the same recurrence with the fee removed, $(1-q)g_t+qC_t$ for an attempt, and the terminal value $\max\{g_k-c,\,-\rho_O f\}$ when the producer holds $\Sigma$, since only the publishing cost and the share of the forfeit sent outside the pair leave the coalition.
 
 \section{Design Choices at a Glance}\label{app:choices}
 Table~\ref{tab:choices} lists each modelling choice of the report, why it was made, why the obvious alternative was not taken, and what could be done instead or next. Section numbers point to where each choice is used.
 
-\begin{table}[h]\centering\scriptsize
+\begin{table}[htbp]\centering\scriptsize
 \renewcommand{\arraystretch}{1.15}
 \begin{tabularx}{\textwidth}{|>{\raggedright\arraybackslash}p{2.3cm}|Y|Y|Y|}
 \hline
 \rowcolor{gray!15}Choice (where) & Why & Why not the alternative & What else \\
 \hline
-Commitment with a producer fallback (Sec.~\ref{sec:model}) & Keeps the large post-quantum signature off the ledger unless the user stays silent & Always posting the signature removes the option but loses the saving; no fallback leaves the forfeit alone, which must be large (Q1) & Let any producer, or a watchtower, publish the signature \\
+Commitment with a producer fallback (Sec.~\ref{sec:model}) & Keeps the large post-quantum signature off the ledger unless the user stays silent & Always posting the signature removes the option but loses the saving, and no fallback leaves the forfeit alone, which must be large (Q1) & Let any producer, or a watchtower, publish the signature \\
 \hline
-Binomial price lattice (Sec.~\ref{sec:model}) & A martingale, so the option has a clean value; exact backward induction; the same model Han et al.\ use & A continuous-time model has no exact finite solver; real paths are too short to calibrate a dynamic model & Fat tails and jumps, partly checked in Sec.~\ref{sec:results} \\
+Binomial price lattice (Sec.~\ref{sec:model}) & A martingale, so the option has a clean value, with exact backward induction and the same model Han et al.\ use & A continuous-time model has no exact finite solver, and real paths are too short to calibrate a dynamic model & Fat tails and jumps, partly checked in Sec.~\ref{sec:results} \\
 \hline
-Risk neutrality and transferable money (Sec.~\ref{sec:model}) & Standard for payments; lets a coalition split any joint gain & Risk aversion only strengthens deterrence (Jensen's inequality, Sec.~\ref{sec:disc}) & Risk-averse producers \\
+Risk neutrality and transferable money (Sec.~\ref{sec:model}) & Standard for payments, and lets a coalition split any joint gain & Risk aversion only strengthens deterrence (Jensen's inequality, Sec.~\ref{sec:disc}) & Risk-averse producers \\
 \hline
-Subgame perfection; deterrence in every pure equilibrium (Sec.~\ref{sec:model}) & Rules out threats a producer would not carry out (Appendix~\ref{app:extra}) & Plain Nash equilibrium accepts such threats; one selected equilibrium could hide a profitable one & Mixed equilibria \\
+Subgame perfection, with deterrence in every pure equilibrium (Sec.~\ref{sec:model}) & Rules out threats a producer would not carry out (Appendix~\ref{app:extra}) & Plain Nash equilibrium accepts such threats, and one selected equilibrium could hide a profitable one & Mixed equilibria \\
 \hline
-Coalition gain against the best equilibrium (Sec.~\ref{sec:model}) & The most favourable honest benchmark; under a credible fallback it is the honest equilibrium & Against the waiting equilibrium every gain is larger by $c(1-q^{k-1})$ (Sec.~\ref{sec:results}) & An all-equilibria guarantee, or a reward for early authorization, each needing its own analysis \\
+Coalition gain against the best equilibrium (Sec.~\ref{sec:model}) & The most favourable honest benchmark, which under a credible fallback it is the honest equilibrium & Against the waiting equilibrium every gain is larger by $c(1-q^{k-1})$ (Sec.~\ref{sec:results}) & An all-equilibria guarantee, or a reward for early authorization, each needing its own analysis \\
 \hline
-$0.1$ bp collusion tolerance (Q3) & A burned forfeit of $c-\min g_k$ suffices for exact collusion-proofness (Prop.~\ref{prop:route}) but is large & At the 20-minute baseline even $0.001$ bp needs about $2\%$, above the $1\%$ limit; short windows can do better & Tolerances from $0.001$ to $1$ bp (Table~\ref{tab:tol}) \\
+$0.1$ bp collusion tolerance (Q3) & A burned forfeit of $c-\min g_k$ suffices for exact collusion-proofness (Prop.~\ref{prop:route}) but is large & At the 20-minute baseline even $0.001$ bp needs about $2\%$, above the $1\%$ limit, while short windows can do better & Tolerances from $0.001$ to $1$ bp (Table~\ref{tab:tol}) \\
 \hline
-Routings self, burn, producer, pool$(n)$ (Sec.~\ref{sec:model}) & Cover every place the money can go within the user--producer pair and outside it & Paying an outside party such as an index owner might let it provoke forfeits & Strategic recipients \\
+Routings self, burn, producer, pool$(n)$ (Sec.~\ref{sec:model}) & Cover every place the money can go within the pair of user and producer and outside it & Paying an outside party such as an index owner might let it provoke forfeits & Strategic recipients \\
 \hline
 Fee $5$ bp, cost $1$ bp, collateral $1\%$, window $20$ minutes (Table~\ref{tab:notation}) & Round illustrative values, since no deployed design exists to measure & Measured values do not yet exist & Sensitivity to fee, window and tolerance (Tables~\ref{tab:fee}, \ref{tab:burnrange}, \ref{tab:tol}) \\
 \hline
-Daily ETH prices, 2017--2026 (Sec.~\ref{sec:framework}) & Long, liquid history on a chain with 12-second blocks & Intraday samples are short and calm & Four assets, five periods, 12-second and one-minute checks \\
+Daily ETH prices, 2017 to 2026 (Sec.~\ref{sec:framework}) & Long, liquid history on a chain with 12-second blocks & Intraday samples are short and calm & Four assets, five periods, 12-second and one-minute checks \\
 \hline
 Independent rotating producers (Prop.~\ref{prop:rot}) & Simplest model of a producer's share of blocks & Ethereum publishes its proposer schedule in advance, which this ignores & Known schedules and multi-block producers \\
 \hline
@@ -587,17 +584,69 @@ Bond or race for disputed indices (Q4) & The two natural ways to settle a disput
 Private types with a 99\% loss-reduction rule (Appendix~\ref{app:extra}) & Shows that users with real need also exploit the delay & The exact minimiser is unstable because the loss is flat & A menu of (window, forfeit) pairs that screens types, as in mechanism design \\
 \hline
 \end{tabularx}
-\caption{Modelling choices: why, why not and what else.}\label{tab:choices}
+\caption{Modelling choices, why each was made, why not the alternatives, and what else could be tried.}\label{tab:choices}
+\end{table}
+
+\begin{table}[ht]\centering\scriptsize
+\begin{tabularx}{\textwidth}{|l|Y|}
+\hline
+\rowcolor{gray!15}Property & What it means here \\
+\hline
+Deterrence & Weak, since a speculator gains at most zero and, if indifferent, is assumed to stay out \\
+\hline
+Individual rationality & Honest users still take part, but without a fallback may fall slightly short of $v-\phi$ (about $0.18$ bp at $k=10$ and $q=0.6$) \\
+\hline
+Credible fallback & Publishing is strictly better for a producer paid only fees and forfeits \\
+\hline
+Collusion-proofness & Joint gain over the best equilibrium is at most $\varepsilon$, a money amount ($0.1$ bp is \$1 on \$100{,}000) \\
+\hline
+Feasible window & Only for the chosen parameters, from \FrontierTwoMin\ minutes at $2\%$ daily volatility to \FrontierEightMin\ at $8\%$ \\
+\hline
+Producers & One producer for the whole window, so with many producers the coalition risk is overstated \\
+\hline
+\end{tabularx}
+\caption{What each guarantee does and does not promise.}\label{tab:guarantees}
 \end{table}
 
 \section{Supplementary Tables and Figures}
 This appendix collects material that supports the results in the main text and adds nothing to its claims. Money is in percent or basis points of the transaction value unless stated otherwise, and the window is $k=\QK$ unless a table varies it.
 
+\textbf{Reading the tables and figures.} Figure~\ref{fig:q1} gives $f^*$ in currency units, with $N=100$ times the size. Table~\ref{tab:rot} reports thresholds as multiples of the single-producer threshold. In Table~\ref{tab:imp}, each routing has 300 random designs, ``mixed 50/50'' is $\rho=(0.5,0.5,0)$, half to the user and half to the producer, P1 is deterrence, P2 is strict credibility and P3 is exact collusion-proofness. Table~\ref{tab:ext} uses a fee of 5~bp, an honest surplus of 10~bp and a geometric forfeit grid, so the first loss appears at the first grid point above the threshold.
 
+Table~\ref{tab:bp} uses $k=\DesignerK$. Its 99\% (95\%) rule picks the smallest forfeit that achieves 99\% (95\%) of the largest possible reduction in the designer's loss from a zero forfeit. These percentages concern loss reduction, not the probability of deterrence. Participation is the prior-weighted share of user types that commit, so $0.45$ means 45\%. In Table~\ref{tab:size}, the last two columns evaluate a proportional forfeit calibrated at size one and a line fitted to the smallest deterring forfeits across sizes. Each cell of Table~\ref{tab:burnrange} gives $f^*$ without a fallback and then $f_{\mathrm{cp}}$ with a burned forfeit and a fallback. A star marks $f_{\mathrm{cp}}$ above the \KappaAssumed\ collateral limit. Table~\ref{tab:qsweep} uses a burned forfeit and no fallback. Table~\ref{tab:han} prices an at-the-money American call over one day with 36 steps using an independent textbook binomial loop, the method of Han et al., without their per-pair volatilities.
 
-\textbf{Reading the tables and figures.} Table~\ref{tab:verify} lists the checks of the solver. Figure~\ref{fig:q1} gives $f^*$ in currency units, with $N=100$ times the size. Table~\ref{tab:q2} gives the speculator's equilibrium value over the pooled period. Table~\ref{tab:fee} varies the fee, adds a fee paid at commitment, and compares the lattice with the closed form. Table~\ref{tab:rot} gives the extortion threshold under producer routing as a multiple of the single-producer threshold. In Table~\ref{tab:imp}, each routing has 300 random designs, P1 is deterrence, P2 is strict credibility and P3 is exact collusion-proofness. Table~\ref{tab:ext} uses a fee of 5~bp and an honest surplus of 10~bp, and its forfeit grid is geometric, so the first loss appears at the first grid point above the threshold. Table~\ref{tab:bp} gives the designer's forfeit at $k=\DesignerK$ as a multiple of $f^*$ under the 99\% rule, the 95\% rule and the exact minimiser. In Table~\ref{tab:size}, the last two columns give the speculator's value under a forfeit proportional to size calibrated at size one, and under a line fitted to the smallest deterring forfeits across the sizes. Table~\ref{tab:contest} varies the owner's availability $a$ and the value ratio $V_a/V_o$. Each cell of Table~\ref{tab:burnrange} gives $f^*$ without a fallback and then $f_{\mathrm{cp}}$ with a burned forfeit and a fallback, and a star marks $f_{\mathrm{cp}}$ above the \KappaAssumed\ collateral limit. Table~\ref{tab:tol} varies the coalition-gain tolerance at the baseline volatility. Table~\ref{tab:coal} gives the best coalition gain over the equilibrium total in the fallback design. Table~\ref{tab:qsweep} uses a burned forfeit and no fallback. Table~\ref{tab:han} prices an at-the-money American call over one day with 36 steps. It checks the solver against an independent textbook binomial loop, the method of Han et al., and does not use their per-pair volatilities. Tables~\ref{tab:vr12} and~\ref{tab:vr} use the 14-day and two-month samples and report the Lo and MacKinlay $z$, which assumes constant volatility, with its heteroskedasticity-robust version. Multiples of 100 and 300 in Table~\ref{tab:vr12} are 20 minutes and one hour. In Figure~\ref{fig:map}, colour shows the smallest collateral fraction $\kappa_{\min}$, and ``ok'' marks the cells that are feasible at the assumed fraction.
+Tables~\ref{tab:vr12} and~\ref{tab:vr} use the 14-day and two-month samples. The variance ratio $\mathrm{VR}(m)$ is the variance of $m$-step log returns divided by $m$ times the variance of one-step log returns. It equals one when returns are uncorrelated with constant variance, and values above one mean that variance grows faster than linearly in the horizon. The Lo and MacKinlay $z$ tests $\mathrm{VR}(m)=1$ assuming constant volatility, and its robust version allows changing volatility. The implied exponent is $H(m)=\log(m\,\mathrm{VR}(m))/(2\log m)$, so $H=1/2$ is square-root-of-time scaling of the standard deviation. Multiples of 100 and 300 in Table~\ref{tab:vr12} are 20 minutes and one hour.
 
-\begin{table}[h]\centering\footnotesize
+Figure~\ref{fig:map} is for the forfeit-only design without a fallback, with a flat $5$ bp fee, $q=0.3$ and the calibrated volatility. Its colour shows $\log_{10}\kappa_{\min}$, where $\kappa_{\min}=f^*/N$ is the smallest collateral fraction that deters speculation, and ``ok'' marks the cells that are feasible at the assumed fraction.
+
+\begin{figure}[htbp]\centering
+\begin{tikzpicture}
+\begin{axis}[xbar,bar shift=0pt,width=0.66\textwidth,height=3.5cm,font=\scriptsize,bar width=6pt,
+  xmin=-9,xmax=26,xlabel={speculator's equilibrium value of committing (bp of the transaction value)},
+  ytick={0,...,6},y dir=reverse,enlarge y limits=0.16,axis lines*=left,
+  yticklabels={plain commit-reveal (no forfeit),forfeit only at $0.3f^*$,forfeit only at $1.5f^*$,fallback with burned forfeit at $0.3f^*$,fallback with producer routing at $0.3f^*$,fallback with burn but signature optional,self routing at $1.5f^*$},
+  nodes near coords,nodes near coords style={font=\tiny,anchor=west},point meta=explicit,
+  extra x ticks={0},extra x tick style={grid=major,grid style={black}},xlabel style={yshift=2pt}]
+\addplot[fill=red!55,draw=red!70!black] table[col sep=comma,y=idx,x=value,meta=value,
+  restrict expr to domain={\thisrow{deterred}}{0:0}]{assets/q2_bars.csv};
+\addplot[fill=green!55!black!70,draw=green!40!black,nodes near coords style={font=\tiny,anchor=east}] table[col sep=comma,y=idx,x=value,meta=value,
+  restrict expr to domain={\thisrow{deterred}}{1:1}]{assets/q2_bars.csv};
+\end{axis}
+\end{tikzpicture}
+\caption{Speculator's value by design. Green bars are deterred.}\label{fig:q2}
+\end{figure}
+
+\begin{figure}[htbp]\centering
+\includegraphics[width=0.92\linewidth]{assets/figs/course_fig_q1_sweeps}
+\caption{$f^*$ in currency units against window, volatility and size.}\label{fig:q1}
+\end{figure}
+
+\begin{figure}[htbp]\centering
+\includegraphics[width=0.55\linewidth]{assets/figs/course_fig_feasibility_map}
+\caption{Smallest collateral fraction by window and size.}\label{fig:map}
+\end{figure}
+
+\begin{table}[htbp]\centering\footnotesize
 \begin{tabularx}{\textwidth}{|>{\raggedright\arraybackslash}p{6.3cm}|Y|}
 \hline
 \rowcolor{gray!15}Check & Outcome \\
@@ -620,133 +669,108 @@ Automated test suite, with deliberately injected bugs & all \NTests\ tests pass,
 \caption{Verification of the solver.}\label{tab:verify}
 \end{table}
 
-\begin{figure}[h]\centering
-\begin{tikzpicture}
-\begin{axis}[xbar,bar shift=0pt,width=0.66\textwidth,height=3.5cm,font=\scriptsize,bar width=6pt,
-  xmin=-9,xmax=26,xlabel={speculator's equilibrium value of committing (bp of the transaction value)},
-  ytick={0,...,6},y dir=reverse,enlarge y limits=0.16,axis lines*=left,
-  yticklabels={plain commit-reveal (no forfeit),forfeit only at $0.3f^*$,forfeit only at $1.5f^*$,fallback with burned forfeit at $0.3f^*$,fallback with producer routing at $0.3f^*$,fallback with burn but signature optional,self routing at $1.5f^*$},
-  nodes near coords,nodes near coords style={font=\tiny,anchor=west},point meta=explicit,
-  extra x ticks={0},extra x tick style={grid=major,grid style={black}},xlabel style={yshift=2pt}]
-\addplot[fill=red!55,draw=red!70!black] table[col sep=comma,y=idx,x=value,meta=value,
-  restrict expr to domain={\thisrow{deterred}}{0:0}]{assets/q2_bars.csv};
-\addplot[fill=green!55!black!70,draw=green!40!black,nodes near coords style={font=\tiny,anchor=east}] table[col sep=comma,y=idx,x=value,meta=value,
-  restrict expr to domain={\thisrow{deterred}}{1:1}]{assets/q2_bars.csv};
-\end{axis}
-\end{tikzpicture}
-\caption{Speculator's value by design. Green bars are deterred.}\label{fig:q2}
-\end{figure}
-
-\begin{figure}[h]\centering
-\includegraphics[width=0.92\linewidth]{assets/figs/course_fig_q1_sweeps}
-\caption{$f^*$ in currency units against window, volatility and size.}\label{fig:q1}
-\end{figure}
-
-\begin{table}[h]\centering\footnotesize
+\begin{table}[htbp]\centering\footnotesize
 \input{assets/tab_q2}
 \caption{Speculator's value by design (bp).}\label{tab:q2}
 \end{table}
 
-\begin{table}[h]\centering\footnotesize
+\begin{table}[htbp]\centering\footnotesize
 \input{assets/tab_fee}
 \caption{Sensitivity of $f^*/N$ to the fee.}\label{tab:fee}
 \end{table}
 
-\begin{table}[h]\centering\footnotesize
+\begin{table}[htbp]\centering\footnotesize
 \input{assets/tab_periods}
 \caption{Volatility and $f^*$ by period.}\label{tab:periods}
 \end{table}
 
-\begin{table}[h]\centering\footnotesize
+\begin{table}[htbp]\centering\footnotesize
 \input{assets/tab_rotating}
 \caption{Extortion threshold under rotating producers.}\label{tab:rot}
 \end{table}
 
-\begin{table}[h]\centering\footnotesize
+\begin{table}[htbp]\centering\footnotesize
 \input{assets/tab_impossibility}
 \caption{Random search over designs.}\label{tab:imp}
 \end{table}
 
-\begin{table}[h]\centering\footnotesize
+\begin{table}[htbp]\centering\footnotesize
 \input{assets/tab_extortion}
 \caption{Extortion by a single strategic producer.}\label{tab:ext}
 \end{table}
 
-\begin{table}[h]\centering\footnotesize
+\begin{table}[htbp]\centering\footnotesize
 \resizebox{\linewidth}{!}{\input{assets/tab_bayespriv}}
 \caption{Designer's forfeit with a private user type.}\label{tab:bp}
 \end{table}
 
-\begin{table}[h]\centering\footnotesize
+\begin{table}[htbp]\centering\footnotesize
 \resizebox{\linewidth}{!}{\input{assets/tab_size}}
 \caption{Forfeits that grow with transaction size.}\label{tab:size}
 \end{table}
-\begin{table}[h]\centering\footnotesize
+\begin{table}[htbp]\centering\footnotesize
 \input{assets/tab_contest}
 \caption{Race against bond ($V_o=\ContestVo$, $\kappa=\ContestKappa$, $c_r=\ContestCr$, $K=\ContestCap$).}\label{tab:contest}
 \end{table}
 
-\begin{table}[h]\centering\footnotesize
+\begin{table}[htbp]\centering\footnotesize
 \input{assets/tab_burnrange}
 \caption{$f^*$ and $f_{\mathrm{cp}}$ by window and volatility.}\label{tab:burnrange}
 \end{table}
 
-\begin{table}[h]\centering\footnotesize
+\begin{table}[htbp]\centering\footnotesize
 \input{assets/tab_tolerance}
 \caption{Sensitivity to the coalition-gain tolerance.}\label{tab:tol}
 \end{table}
 
-\begin{table}[h]\centering\footnotesize
+\begin{table}[htbp]\centering\footnotesize
 \input{assets/tab_coalition}
 \caption{Coalition gain by routing (bp).}\label{tab:coal}
 \end{table}
 
-\begin{table}[h]\centering\footnotesize
+\begin{table}[htbp]\centering\footnotesize
 \input{assets/tab_qsweep}
 \caption{$f^*$ against the censoring probability.}\label{tab:qsweep}
 \end{table}
-\begin{table}[h]\centering\footnotesize
+\begin{table}[htbp]\centering\footnotesize
 \input{assets/tab_han}
 \caption{Binomial premium against the game solver.}\label{tab:han}
 \end{table}
-\begin{table}[h]\centering\footnotesize
+\begin{table}[htbp]\centering\footnotesize
 \input{assets/tab_vr12}
 \caption{Variance ratios of 12-second returns.}\label{tab:vr12}
 \end{table}
-\begin{table}[h]\centering\footnotesize
+\begin{table}[htbp]\centering\footnotesize
 \input{assets/tab_vr}
 \caption{Variance ratios of one-minute returns.}\label{tab:vr}
 \end{table}
-\begin{table}[h]\centering\footnotesize
+\begin{table}[htbp]\centering\footnotesize
 \input{assets/tab_assets}
 \caption{Calibration and $f^*$ by asset.}\label{tab:assets}
 \end{table}
-\begin{figure}[h]\centering
-\includegraphics[width=0.55\linewidth]{assets/figs/course_fig_feasibility_map}
-\caption{Smallest collateral fraction by window and size.}\label{fig:map}
-\end{figure}
+
 
 \clearpage
 \section{Additional Results}\label{app:extra}
 \textbf{Unknown user types.} When a share $\pi$ of users are speculators ($k=\DesignerK$, $f^*=\DesFstarBp$ bp), full deterrence is optimal in \DesFull\ of the 36 combinations of $(q,\pi)$ tested, since an honest user is dropped with probability $q^{k-1}<10^{-6}$ even at $q=0.7$.
 
-\textbf{Private user types.} Users may also differ in how much they genuinely need the trade, and this exposure may be private. Then moderately exposed users also exploit the delay, and the designer's forfeit, defined by the 99\% loss-reduction rule below (not a 99\% chance of deterrence), is \BPLow\ to \BPHigh\ times $f^*$ across the $q$ tested, and \BPSensLo\ to \BPSensHi\ when the prior is varied. The prior and objective are illustrative, so this factor of about two is an illustration rather than a recommendation. Table~\ref{tab:bp} gives the values.
+\textbf{Private user types.} In the private-type model of Section~\ref{sec:model}, moderately exposed users also exploit the delay. The designer's forfeit under the 99\% loss-reduction rule is \BPLow\ to \BPHigh\ times $f^*$ across the $q$ tested, and \BPSensLo\ to \BPSensHi\ when the prior is varied (Table~\ref{tab:bp}). These factors depend on the illustrative prior and objective.
 
 \textbf{Nash equilibria and subgame perfection.} The verification tools also show why the solution concept of Section~\ref{sec:model} matters. With a burned forfeit of $50$ in illustrative units and a fallback, only \BurnSPNE\ of \BurnNash\ pure Nash equilibria are subgame perfect, and the other \BurnNonCred\ rest on a producer threat to withhold that it would never carry out.
 
-\textbf{Gaussian approximation.} If $g_{k-1}$ is roughly normal with standard deviation $s$, the put in Proposition~\ref{prop:value} costs $a\Phi(a/s)+s\,n(a/s)$ with $a=\phi-f$, where $\Phi$ and $n$ are the standard normal distribution function and density. This is a closed-form expression for the put, not for $f^*$; solving it equal to $\phi$ numerically gives an approximation to $f^*$, compared with the lattice in Table~\ref{tab:fee}.
+\textbf{Gaussian approximation.} If $g_{k-1}$ is roughly normal with standard deviation $s$, the put in Proposition~\ref{prop:value} costs $a\Phi(a/s)+s\,n(a/s)$ with $a=\phi-f$, where $\Phi$ and $n$ are the standard normal distribution function and density. This is a closed-form expression for the put, not for $f^*$, and solving it equal to $\phi$ numerically gives an approximation to $f^*$, compared with the lattice in Table~\ref{tab:fee}.
 
 \textbf{Fee paid at commitment.} A fee paid at commitment lowers the speculator's value by a constant, and one of $5$ bp lowers $f^*$ from \FstarKHundred\ to \CommitFeeFive\ (Table~\ref{tab:fee}).
 
 \textbf{Forfeits that grow with size.} Under the flat fee, a forfeit proportional to size and calibrated at size one leaves a speculator \SizePropMaxResidual\ bp at size $100$. A forfeit fitted as a line across sizes over-penalizes the smallest trades \SizeLineOverSmall\ times (Table~\ref{tab:size}).
 
-\textbf{Loss function of the private-type model.} A type commits if its best-response value $V_{\mathrm{br}}$ is at least zero, and $V_{\mathrm{hon}}$ is its value of authorizing at once. Its \emph{option-exploitation benefit} is $X=V_{\mathrm{br}}-V_{\mathrm{hon}}$, the gain from timing its authorization instead of authorizing at once, and it bears a friction $F=(\theta-\phi)-V_{\mathrm{hon}}$, while a deterred type loses its surplus $s(\theta)=\max(\theta-\phi,0)$. The designer minimizes $L(f)=\E_\theta[\mathbf 1_{\text{commit}}(\lambda X+\nu F)+\mathbf 1_{\text{deterred}}\,s(\theta)]$ with weights $\lambda$ and $\nu$. $X$ is a chosen proxy for harm to counterparties, not a measured loss. With $q=0$ and $N=1$, for example, $X=\E[g_\tau\mathbf 1_{\text{exec}}]-(\theta-\phi+f)\Pr(\text{drop})$, where the first term is the counterparty's trading loss and the second is the user's own change in fees, forfeits and execution, so $X$ equals neither the counterparty's loss nor a welfare loss in general. Because $L$ is almost flat once exploitation vanishes, the designer's forfeit is defined as the smallest one that captures $99\%$ of the reduction in $L$ from a zero forfeit.
+\textbf{Loss function of the private-type model.} Here all money is divided by $N$, which is the same as setting $N=1$, so a type's extra value from execution is $\theta$. A type commits if its best-response value $V_{\mathrm{br}}$ is at least zero, and $V_{\mathrm{hon}}$ is its value of authorizing at once. Its \emph{option-exploitation benefit} is $X=V_{\mathrm{br}}-V_{\mathrm{hon}}$, the gain from timing its authorization instead of authorizing at once, and it bears a friction $F=(\theta-\phi)-V_{\mathrm{hon}}$, while a deterred type loses its surplus $s(\theta)=\max(\theta-\phi,0)$. The designer minimizes $L(f)=\E_\theta[\mathbf 1_{\text{commit}}(\lambda X+\nu F)+\mathbf 1_{\text{deterred}}\,s(\theta)]$, where $\E_\theta$ averages over the type distribution and $\lambda$ and $\nu$ weight exploitation and friction. $X$ is a chosen proxy for harm to counterparties, not a measured loss. With $q=0$, for example, $X=\E[g_\tau\mathbf 1_{\text{exec}}]-(\theta-\phi+f)\Pr(\text{drop})$, where the first term is the counterparty's trading loss and the second is the user's own change in fees, forfeits and execution, so $X$ equals neither the counterparty's loss nor a welfare loss in general. The near-flatness of $L$ once exploitation vanishes motivates the loss-reduction rules defined before Table~\ref{tab:bp}.
 
 \textbf{Prior of the private-type model.} The prior puts weights $0.35$, $0.20$, $0.15$, $0.12$, $0.08$, $0.06$ and $0.04$ on exposures of $0$, $2$, $5$, $10$, $20$, $50$ and $100$ bp, and the loss weights are $\lambda=\nu=1$.
 
 \textbf{Exact minimiser of the private-type loss.} The exact minimiser rises from \BPExactCoarse\ to \BPExactFine\ times $f^*$ as the number of steps in the window rises from \BPStepsLow\ to \BPStepsHigh\ with the window's volatility held fixed. This is a joint sensitivity and not a pure refinement, because each extra step is also an extra authorization attempt with the same censoring probability $q$, so at $q=0.6$ the chance that every attempt fails falls from $0.6^{5}\approx0.078$ to $0.6^{80}\approx2\times10^{-18}$. A pure refinement would subdivide the price steps while keeping the authorization schedule, which is left for future work. The baseline at $k=\DesignerK$ is unaffected. The 99\% rule is steadier. It is refined between coarse grid points, with the target taken from the coarse-grid minimum, and it gives \BPEpsFineLow\ to \BPEpsFine\ times $f^*$ on the finest lattice. A forfeit grid with spacing $0.25f^*$ gives \BPGridCoarse\ and one with spacing $0.025f^*$ gives \BPGridFine.
 
-\textbf{Intraday checks of the price model.} The 12-second data are 14 days of one-second ETH closes, \TwFrom\ to \TwTo, resampled to 12-second blocks, which gives \TwN\ overlapping \EmpWindow-minute windows. This period is calm. The realized volatility per block is \TwSigmaStep\ against \TwImpliedStep\ implied by the full-history calibration, a daily equivalent of \TwDailyEq, so the forfeits in the main text belong to a more volatile regime. The variance ratio is \TwVRTwo\ at 24 seconds and between \TwVRLow\ and \TwVRHigh\ at longer horizons (Table~\ref{tab:vr12}). A test that is robust to changing volatility finds it above one at the pointwise 5\% level only up to about \TwSigMinutes\ minutes ($z=\TwZRobShort$ at 24 seconds and \TwZRobSig\ at \TwSigMinutes\ minutes) and not at 20 minutes ($z=\TwZRobWindow$), with no correction for the number of horizons. The point estimate is that square-root-of-time scaling understates the window's standard deviation by about \TwUnderstate, which this sample cannot tell apart from zero. The forfeit under the empirical distribution is \TwFstar, with a $95\%$ interval of \TwCI\ from \TwNBoot\ block-bootstrap resamples (seed \TwSeed, blocks twelve windows long). The one-minute data run from \EmpFrom\ to \EmpTo. There the interval \EmpCI\ excludes the lognormal value of \EmpLognormal\ (ratio \EmpRatio).
+\textbf{Intraday checks of the price model.} The 12-second data are 14 days of one-second ETH closes, \TwFrom\ to \TwTo, resampled to 12-second blocks, which gives \TwN\ overlapping \EmpWindow-minute windows. The realized volatility per block is \TwSigmaStep\ against \TwImpliedStep\ implied by the full-history calibration, a daily equivalent of \TwDailyEq, so the forfeits in the main text belong to a more volatile regime. The variance ratio is \TwVRTwo\ at 24 seconds and between \TwVRLow\ and \TwVRHigh\ at longer horizons (Table~\ref{tab:vr12}). A test that is robust to changing volatility finds it above one at the pointwise 5\% level only up to about \TwSigMinutes\ minutes ($z=\TwZRobShort$ at 24 seconds and \TwZRobSig\ at \TwSigMinutes\ minutes) and not at 20 minutes ($z=\TwZRobWindow$), with no correction for the number of horizons. The point estimate is that square-root-of-time scaling understates the window's standard deviation by about \TwUnderstate, which this sample cannot tell apart from zero. The empirical forfeit and $95\%$ interval reported in Section~\ref{sec:discussion} use \TwNBoot\ block-bootstrap resamples (seed \TwSeed, blocks twelve windows long). The one-minute data run from \EmpFrom\ to \EmpTo. There the interval \EmpCI\ excludes the lognormal value of \EmpLognormal\ (ratio \EmpRatio).
 
 \section{Reproducing the Results}
 The repository \repo\ contains the code, the price data and every result file. After installing the packages in \verb|requirements.txt|, the single command \verb|./run_all.sh| runs the tests, regenerates every result and rebuilds this report from the data in the repository (about 25 minutes). It uses only the frozen price data committed in \verb|data/| and stops at the first failing step. The command \verb|python scripts/compare_results.py| then checks every regenerated CSV file, staged or not, against the committed one, treating a changed NaN or a sign change of an infinity as a real difference. The pipeline was tested with Python 3.12 and TeX Live 2023, and \verb|docs/REPRODUCING.md| lists the LaTeX packages needed. Setting \verb|REFRESH_DATA=1| when running \verb|scripts/run_assets.sh| downloads newer prices for the asset comparison and therefore changes those results. Results are written to \verb|results/|, with the main calibration in \verb|results/main/|. The individual steps are as follows.
